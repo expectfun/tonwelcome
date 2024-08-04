@@ -14,6 +14,10 @@ h1 {
     color: rgb(47, 246, 93);
 }
 
+h2 {
+    color: rgb(47, 246, 93);
+}
+
 button {
     color: red;
     background-color: black;
@@ -24,3 +28,10 @@ a {
     text-decoration: none;
     font-size: larger;
 }
+
+.element {
+    max-width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    padding-bottom: 10px;
+  }
