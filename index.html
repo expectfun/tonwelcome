@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="style.css">
 <title>Welcome to TON</title>
-<script src="./tonconnect-ui.min.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 </head>
 <body>
 <h1>Welcome to TON</h1>
@@ -13,7 +13,39 @@
 
 <h1>Дайте деняк.</h1>
 
-<button><h2><a href="ton://transfer/UQDeTd9YCTEKVs0e48gtr1vTlTSKX9EujfoUnvYD_C0tW2qY">Дать деняк c TON-кошелька</a></h2></button>
+<div id="ton-connect" class="element"></div>
+<button onclick="transaction()"><h2>Отправить тонкоин</h2></button>
+
+<script>
+
+    const mytc = new TON_CONNECT_UI.TonConnectUI({
+        manifestUrl: 'https://expectfun.github.io/tonwelcome/tonconnect-manifest.json',
+        buttonRootId: 'ton-connect'
+    });
+
+
+    async function transaction() {
+
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 60, // 60 sec
+            messages: [
+                {
+                    address: "UQDeTd9YCTEKVs0e48gtr1vTlTSKX9EujfoUnvYD_C0tW2qY", // destination address
+                    amount: "1000000000" //Toncoin in nanotons
+                }
+            ]
+        };
+
+        try {
+            await mytc.sendTransaction(transaction);
+        } catch (e) {
+            console.log("ну не шмогла");
+        }
+        
+    }
+
+</script>
+
 <p><a href="index2.html">Перейти к злой версии сайта</a></p>
 
 
