@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet - Gold</title>
+  <style>
+    :root {
+      --bg: #0b131d;
+      --card: #111c29;
+      --card-strong: #0d1a28;
+      --primary: #44a8ff;
+      --accent: #1dd388;
+      --muted: #7e8fa3;
+      --text: #ffffff;
+      --text-strong: #e9f1ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 20% 20%, #18263a 0%, #0b131d 45%, #060b11 100%);
+      font-family: "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
+      color: var(--text);
+    }
+
+    .device {
+      width: 414px;
+      max-width: 94vw;
+      height: 896px;
+      max-height: 94vh;
+      background: linear-gradient(180deg, #0c1521 0%, #0a1220 50%, #07101a 100%);
+      border-radius: 32px;
+      padding: 22px 18px 24px;
+      box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 26px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .pill .status {
+      width: 9px;
+      height: 9px;
+      background: #45c7ff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 3px rgba(69, 199, 255, 0.18);
+    }
+
+    .floating {
+      position: absolute;
+      right: 18px;
+      top: 14px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .asset {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .asset .logo {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: #d7a63d;
+      display: grid;
+      place-items: center;
+      box-shadow:
+        0 14px 30px rgba(215, 166, 61, 0.28),
+        inset 0 0 0 6px rgba(255, 255, 255, 0.08);
+    }
+
+    .asset h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .asset .fiat {
+      font-size: 30px;
+      font-weight: 700;
+    }
+
+    .asset .balance {
+      font-size: 18px;
+      color: var(--muted);
+      letter-spacing: 0.4px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 14px 0 30px;
+    }
+
+    .action-btn {
+      background: var(--card);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 14px 8px 12px;
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .action-btn span {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      color: var(--text-strong);
+    }
+
+    .section-header .more {
+      color: var(--primary);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .price-card {
+      background: linear-gradient(145deg, rgba(19, 43, 63, 0.88), rgba(8, 24, 38, 0.96));
+      border-radius: 22px;
+      padding: 20px 20px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .price-card .value {
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    .price-card .delta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .delta .chip {
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(29, 211, 136, 0.14);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sparkline {
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .nav-bar {
+      position: absolute;
+      bottom: 18px;
+      left: 18px;
+      right: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      background: #0f1f2f;
+      border-radius: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+    }
+
+    .nav-item {
+      padding: 12px 10px 10px;
+      display: grid;
+      place-items: center;
+      gap: 6px;
+      color: var(--text-strong);
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .nav-item.active {
+      background: #14273b;
+    }
+
+    .nav-item span {
+      font-size: 14px;
+    }
+
+    /* Screen two styles */
+    .screen-two {
+      background: #101b29;
+      border-radius: 24px;
+      padding: 18px 14px 0;
+      overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    }
+
+    .screen-two header {
+      padding: 4px 4px 10px;
+      background: #0c131d;
+      border-radius: 18px 18px 10px 10px;
+      margin: -4px -4px 18px -4px;
+    }
+
+    .buy-pill {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: #1d2b3c;
+      border-radius: 16px;
+      color: #cbd7e6;
+      font-weight: 700;
+      margin: 4px 0 32px 8px;
+    }
+
+    .buy-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(244, 192, 79, 0.2);
+      display: grid;
+      place-items: center;
+    }
+
+    .buy-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 18px;
+    }
+
+    .amount-display {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-top: 40px;
+    }
+
+    .caret {
+      width: 2px;
+      height: 64px;
+      background: #3386d8;
+      border-radius: 6px;
+    }
+
+    .amount-input {
+      font-size: 80px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #e9f2ff;
+      line-height: 1;
+      background: none;
+      border: none;
+      outline: none;
+      padding: 0;
+      width: 170px;
+      max-width: 220px;
+      caret-color: #3386d8;
+    }
+
+    .amount-input.invalid {
+      color: #ff6b6b;
+    }
+
+    .ticker {
+      font-size: 50px;
+      font-weight: 700;
+      color: #9fb1c6;
+      letter-spacing: 0.6px;
+      line-height: 1.1;
+    }
+
+    .conversion {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #9fb1c6;
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .icon-btn.mini {
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .available {
+      color: #8ba0b8;
+      font-size: 19px;
+      font-weight: 600;
+    }
+
+    .available .link {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .pay-select {
+      display: flex;
+      justify-content: center;
+      margin: auto 0 34px;
+      width: 100%;
+    }
+
+    .pay-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      color: #d8e5f5;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: default;
+    }
+
+    .pay-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #2bb673;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #0f291d;
+    }
+
+    .pay-label {
+      letter-spacing: 0.2px;
+    }
+
+    .cta {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 18px;
+      padding: 20px;
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #6c7888;
+      margin: 0 4px 8px;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .cta.disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    .cta.active {
+      background: #2ca8ff;
+      border-color: #2ca8ff;
+      color: #0b223a;
+      box-shadow: 0 12px 24px rgba(44, 168, 255, 0.35);
+      cursor: pointer;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 5;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 420px;
+      background: #121c29;
+      border-radius: 26px;
+      padding: 24px 20px 18px;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .modal-icon {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: #d7a63d;
+      display: grid;
+      place-items: center;
+      margin: 12px auto 18px;
+    }
+
+    .modal-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: #f2f6ff;
+      margin-bottom: 22px;
+    }
+
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 22px;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      padding: 16px 14px;
+      background: rgba(255, 255, 255, 0.02);
+      color: #e3edf9;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: #b5c4d6;
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .info-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #f3f8ff;
+      text-align: right;
+    }
+
+    .confirm-btn,
+    .return-btn {
+      width: 100%;
+      background: #2ca8ff;
+      border: 1px solid #2ca8ff;
+      border-radius: 16px;
+      padding: 18px;
+      color: #0b223a;
+      font-size: 19px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 14px 24px rgba(44, 168, 255, 0.28);
+    }
+
+    .success-icon {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #2bb673;
+      display: grid;
+      place-items: center;
+      margin: 18px auto 22px;
+    }
+
+    .success-title {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      color: #f2f6ff;
+      margin-bottom: 12px;
+    }
+
+    .success-sub {
+      text-align: center;
+      color: #c6d6e7;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 22px;
+    }
+
+    /* Screen three (main list) */
+    .screen-three {
+      background: #0c131c;
+      border-radius: 24px;
+      padding: 18px 14px 80px;
+      position: relative;
+    }
+
+    .screen-three header {
+      margin-bottom: 16px;
+    }
+
+    .balance-card {
+      background: radial-gradient(circle at 20% 10%, rgba(255,255,255,0.08), rgba(15,23,35,0.9));
+      border-radius: 18px;
+      padding: 28px 20px 22px;
+      text-align: center;
+      color: #f3f7ff;
+      margin-bottom: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .balance-card .label {
+      font-size: 18px;
+      color: #c3cedd;
+      margin-bottom: 6px;
+    }
+
+    .balance-card .value {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .qa-btn {
+      background: #0f1f2f;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 12px 8px 10px;
+      display: grid;
+      place-items: center;
+      gap: 8px;
+      color: #e9f2ff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .asset-list {
+      background: #0f1f2f;
+      border-radius: 18px;
+      padding: 10px 0;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .asset-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 10px;
+      color: #e8f2ff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .asset-row:last-child {
+      border-bottom: none;
+    }
+
+    .asset-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .asset-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: #0a121c;
+    }
+
+    .asset-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .asset-name {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .asset-sub {
+      font-size: 14px;
+      color: #9bb0c7;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .asset-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .asset-fiat {
+      font-weight: 700;
+      font-size: 17px;
+    }
+
+    .asset-bal {
+      font-size: 14px;
+      color: #9bb0c7;
+    }
+
+    /* Simple shimmer dot near wallet label */
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #53c4ff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 4px rgba(83, 196, 255, 0.2);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 2px rgba(83, 196, 255, 0.22); }
+      50% { box-shadow: 0 0 0 7px rgba(83, 196, 255, 0.08); }
+      100% { box-shadow: 0 0 0 2px rgba(83, 196, 255, 0.22); }
+    }
+  </style>
+</head>
+<body>
+  <div class="device">
+    <div class="screen screen-one active">
+      <header>
+      <button class="icon-btn" aria-label="Back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="pill">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7 5h10a2 2 0 0 1 2 2v9.5a1.5 1.5 0 0 1-3 0V8H6v8.5a1.5 1.5 0 0 1-3 0V7a2 2 0 0 1 2-2h2Z" opacity="0.9"/>
+          <rect x="8" y="3.5" width="8" height="3" rx="1.2" />
+        </svg>
+        Wallet
+        <span class="status" aria-hidden="true"></span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div class="dot" aria-hidden="true"></div>
+        <button class="icon-btn" aria-label="More options">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="1.6"/>
+            <circle cx="12" cy="12" r="1.6"/>
+            <circle cx="12" cy="19" r="1.6"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+      <div class="asset">
+      <div class="logo" aria-hidden="true">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+          <path d="M12 36.5 30.8 18.5a4 4 0 0 1 2.9-1.2h12.7a3 3 0 0 1 2.9 2.2l3.8 13.7a3 3 0 0 1-1.8 3.6L33 43.7a4 4 0 0 1-3 0.1L13 38.9a1.8 1.8 0 0 1-.9-2.4Z" fill="#fff" opacity="0.92"/>
+          <path d="M37 20h8l3.3 12-8.7 3.5-8-3 5.4-12.5Z" fill="#f5f5f5" opacity="0.9"/>
+          <path d="M21 37.5 33.8 22.7 39 24l-6.6 13.2L21 37.5Z" fill="#fff" opacity="0.75"/>
+          <path d="M16.5 41.5 33.4 46l16-6.5" stroke="#fdfdfd" stroke-width="2.4" stroke-linecap="round" opacity="0.85"/>
+        </svg>
+      </div>
+      <h1>Gold</h1>
+      <div class="fiat">$0.00</div>
+      <div class="balance">0 XAUT</div>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn" aria-label="Send">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <path d="M5 12h14"></path>
+          <path d="m12 5 7 7-7 7"></path>
+        </svg>
+        <span>Send</span>
+      </button>
+      <button class="action-btn" aria-label="Receive">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <path d="M19 12H5"></path>
+          <path d="m12 19-7-7 7-7"></path>
+        </svg>
+        <span>Receive</span>
+      </button>
+      <button class="action-btn buy" aria-label="Buy">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="M12 8v8M8 12h8"></path>
+        </svg>
+        <span>Buy</span>
+      </button>
+      <button class="action-btn" aria-label="Exchange">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+          <path d="M4 7h11l-2.5-3M20 17H9l2.5 3"></path>
+        </svg>
+        <span>Exchange</span>
+      </button>
+    </div>
+
+    <div class="section-header">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="3"></rect>
+          <path d="M3 10h18"></path>
+        </svg>
+        <span style="font-size:17px; font-weight:700;">Price</span>
+      </div>
+      <span class="more">Show more</span>
+    </div>
+
+    <div class="price-card">
+      <div>
+        <div class="value">$4,267.53</div>
+        <div class="delta">
+          <span class="chip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+            1.57%
+          </span>
+          +$66.03
+          <span style="color: var(--muted); font-weight:500;">24h</span>
+        </div>
+      </div>
+      <div class="sparkline" aria-hidden="true">
+        <svg viewBox="0 0 160 80" fill="none" preserveAspectRatio="none">
+          <path d="M4 62 C 28 48, 42 50, 58 40 C 76 32, 94 38, 110 52 C 122 62, 132 60, 142 50 C 150 40, 156 30, 156 18" stroke="#21d07a" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.25"/>
+          <path d="M4 62 C 28 48, 42 50, 58 40 C 76 32, 94 38, 110 52 C 122 62, 132 60, 142 50 C 150 40, 156 30, 156 18" stroke="#21d07a" stroke-width="4" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+    </div>
+
+    <nav class="nav-bar">
+      <div class="nav-item active" aria-label="Wallet">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7h18v10H3z"></path>
+          <path d="M16 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12"></path>
+          <circle cx="17" cy="12" r="1.5"></circle>
+        </svg>
+        <span>Wallet</span>
+      </div>
+      <div class="nav-item" aria-label="Trade">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 17 9 11 13 15 21 7"></polyline>
+          <polyline points="14 7 21 7 21 14"></polyline>
+        </svg>
+        <span>Trade</span>
+      </div>
+      <div class="nav-item" aria-label="History">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 7v5l3 3"></path>
+        </svg>
+        <span>History</span>
+      </div>
+    </nav>
+    </div>
+
+    <div class="screen screen-two">
+      <header>
+        <button class="icon-btn back-btn" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <div class="pill">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 5h10a2 2 0 0 1 2 2v9.5a1.5 1.5 0 0 1-3 0V8H6v8.5a1.5 1.5 0 0 1-3 0V7a2 2 0 0 1 2-2h2Z" opacity="0.9"/>
+            <rect x="8" y="3.5" width="8" height="3" rx="1.2" />
+          </svg>
+          Wallet
+          <span class="status" aria-hidden="true"></span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="dot" aria-hidden="true"></div>
+          <button class="icon-btn" aria-label="More options">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="1.6"/>
+              <circle cx="12" cy="12" r="1.6"/>
+              <circle cx="12" cy="19" r="1.6"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="buy-pill">
+        <div class="buy-icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 14.4 12.4 6a2 2 0 0 1 1.4-.6h6.2a1.5 1.5 0 0 1 1.4 1.1l1.8 6.5a1.5 1.5 0 0 1-.9 1.8l-9.3 3.6a2 2 0 0 1-1.5 0l-7.3-2.5a1 1 0 0 1-.7-1.5Z" fill="#f4c04f"/>
+            <path d="m13 7 5 .2 1.5 5.5-4.7 1.8L11 13l2-6Z" fill="#fff" opacity="0.9"/>
+          </svg>
+        </div>
+        <span>Buy XAUT</span>
+      </div>
+
+      <div class="buy-body">
+        <div class="amount-display">
+          <div class="caret"></div>
+          <input class="amount-input" aria-label="Amount" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="0" />
+          <div class="ticker">USDT</div>
+        </div>
+        <div class="conversion">
+          <span>1 USDT ≈ 0.000233 XAUT</span>
+          <button class="icon-btn mini" aria-label="Toggle pair">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="available">
+          Available 2.310224 USDT · <button class="link">Max</button>
+        </div>
+      </div>
+
+      <div class="pay-select">
+        <div class="pay-chip">
+          <span class="pay-icon">$</span>
+          <span class="pay-label">Pay Dollars</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <div class="cta disabled">
+        Review Order
+      </div>
+    </div>
+
+    <div class="screen screen-three">
+      <header>
+        <button class="icon-btn back-btn-main" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="5" x2="19" y2="19"></line>
+            <line x1="19" y1="5" x2="5" y2="19"></line>
+          </svg>
+        </button>
+        <div class="pill">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 5h10a2 2 0 0 1 2 2v9.5a1.5 1.5 0 0 1-3 0V8H6v8.5a1.5 1.5 0 0 1-3 0V7a2 2 0 0 1 2-2h2Z" opacity="0.9"/>
+            <rect x="8" y="3.5" width="8" height="3" rx="1.2" />
+          </svg>
+          Wallet
+          <span class="status" aria-hidden="true"></span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="dot" aria-hidden="true"></div>
+          <button class="icon-btn" aria-label="More options">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="1.6"/>
+              <circle cx="12" cy="12" r="1.6"/>
+              <circle cx="12" cy="19" r="1.6"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="balance-card">
+        <div class="label">Balance</div>
+        <div class="value">$7.94</div>
+      </div>
+
+      <div class="quick-actions">
+        <button class="qa-btn">Transfer</button>
+        <button class="qa-btn">Deposit</button>
+        <button class="qa-btn">Withdraw</button>
+        <button class="qa-btn">Exchange</button>
+      </div>
+
+      <div class="asset-list">
+        <div class="asset-row">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:#2bb673;">$</div>
+            <div class="asset-meta">
+              <div class="asset-name">Dollars</div>
+              <div class="asset-sub">0.31 USDT</div>
+            </div>
+          </div>
+          <div class="asset-right">
+            <div class="asset-fiat">$0.31</div>
+            <div class="asset-bal"></div>
+          </div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:#3cb7ff;">T</div>
+            <div class="asset-meta">
+              <div class="asset-name">Toncoin</div>
+              <div class="asset-sub">$1.619 ↓ 3.31%</div>
+            </div>
+          </div>
+          <div class="asset-right">
+            <div class="asset-fiat">$0.30</div>
+            <div class="asset-bal">0.184 TON</div>
+          </div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:#9a6dff;">S</div>
+            <div class="asset-meta">
+              <div class="asset-name">Solana</div>
+              <div class="asset-sub">$133.93 ↓ 3.12%</div>
+            </div>
+          </div>
+          <div class="asset-right">
+            <div class="asset-fiat">$5.36</div>
+            <div class="asset-bal">0.04 SOL</div>
+          </div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:#d7a63d;">G</div>
+            <div class="asset-meta">
+              <div class="asset-name">Gold</div>
+              <div class="asset-sub">$4,265.73 ↑ 1.33%</div>
+            </div>
+          </div>
+          <div class="asset-right">
+            <div class="asset-fiat">$1.97</div>
+            <div class="asset-bal">0.000461 XAUT</div>
+          </div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:#f6a623;">₿</div>
+            <div class="asset-meta">
+              <div class="asset-name">Bitcoin</div>
+              <div class="asset-sub">$53,194.63 ↓ 5.82%</div>
+            </div>
+          </div>
+          <div class="asset-right">
+            <div class="asset-fiat">$0.00</div>
+            <div class="asset-bal">0 BTC</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="nav-bar" style="position: static; margin-top: 16px;">
+        <div class="nav-item active" aria-label="Wallet">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7h18v10H3z"></path>
+            <path d="M16 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12"></path>
+            <circle cx="17" cy="12" r="1.5"></circle>
+          </svg>
+          <span>Wallet</span>
+        </div>
+        <div class="nav-item" aria-label="Trade">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 17 9 11 13 15 21 7"></polyline>
+            <polyline points="14 7 21 7 21 14"></polyline>
+          </svg>
+          <span>Trade</span>
+        </div>
+        <div class="nav-item" aria-label="History">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v5l3 3"></path>
+          </svg>
+          <span>History</span>
+        </div>
+      </nav>
+    </div>
+
+    <div class="modal-overlay" data-modal="confirm">
+      <div class="modal-card">
+        <button class="modal-close" data-close="confirm" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="5" x2="19" y2="19"></line>
+            <line x1="19" y1="5" x2="5" y2="19"></line>
+          </svg>
+        </button>
+        <div class="modal-icon" aria-hidden="true">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <path d="M12 36.5 30.8 18.5a4 4 0 0 1 2.9-1.2h12.7a3 3 0 0 1 2.9 2.2l3.8 13.7a3 3 0 0 1-1.8 3.6L33 43.7a4 4 0 0 1-3 0.1L13 38.9a1.8 1.8 0 0 1-.9-2.4Z" fill="#fff" opacity="0.92"/>
+            <path d="M37 20h8l3.3 12-8.7 3.5-8-3 5.4-12.5Z" fill="#f5f5f5" opacity="0.9"/>
+            <path d="M21 37.5 33.8 22.7 39 24l-6.6 13.2L21 37.5Z" fill="#fff" opacity="0.75"/>
+            <path d="M16.5 41.5 33.4 46l16-6.5" stroke="#fdfdfd" stroke-width="2.4" stroke-linecap="round" opacity="0.85"/>
+          </svg>
+        </div>
+        <div class="modal-title">Buy XAUT</div>
+        <div class="info-table">
+          <div class="info-row">
+            <div class="info-label">You receive</div>
+            <div class="info-value" data-field="receive">0.000000 XAUT</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">You pay</div>
+            <div class="info-value" data-field="pay">0 USDT ≈ $0.00</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Rate</div>
+            <div class="info-value" data-field="rate">1 XAUT ≈ 4,296.47 USDT</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Fee</div>
+            <div class="info-value" data-field="fee">0.000000 XAUT ≈ $0.00</div>
+          </div>
+        </div>
+        <button class="confirm-btn" aria-label="Confirm and Buy">Confirm and Buy</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay" data-modal="success">
+      <div class="modal-card">
+        <button class="modal-close" data-close="success" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="5" x2="19" y2="19"></line>
+            <line x1="19" y1="5" x2="5" y2="19"></line>
+          </svg>
+        </button>
+        <div class="success-icon" aria-hidden="true">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <div class="success-title">You bought XAUT</div>
+        <div class="success-sub" data-field="success-sub">0.000000 XAUT will be added to your balance in a few minutes.</div>
+        <button class="return-btn" aria-label="Return to main">Return to Main</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple click feedback for primary actions.
+    document.querySelectorAll(".action-btn, .nav-item, .icon-btn").forEach((btn) => {
+      btn.addEventListener("mousedown", () => btn.classList.add("pressed"));
+      btn.addEventListener("mouseup", () => btn.classList.remove("pressed"));
+      btn.addEventListener("mouseleave", () => btn.classList.remove("pressed"));
+    });
+
+    const screenOne = document.querySelector(".screen-one");
+    const screenTwo = document.querySelector(".screen-two");
+    const screenThree = document.querySelector(".screen-three");
+    const buyBtn = document.querySelector(".action-btn.buy");
+    const backBtns = document.querySelectorAll(".back-btn");
+    const amountInput = document.querySelector(".amount-input");
+    const cta = document.querySelector(".cta");
+    const available = 2.310224;
+    const modalConfirm = document.querySelector('[data-modal="confirm"]');
+    const modalSuccess = document.querySelector('[data-modal="success"]');
+    const confirmBtn = modalConfirm.querySelector(".confirm-btn");
+    const returnBtn = modalSuccess.querySelector(".return-btn");
+    const closeButtons = document.querySelectorAll(".modal-close");
+    const backMain = document.querySelector(".back-btn-main");
+    const fields = {
+      receive: modalConfirm.querySelector('[data-field="receive"]'),
+      pay: modalConfirm.querySelector('[data-field="pay"]'),
+      rate: modalConfirm.querySelector('[data-field="rate"]'),
+      fee: modalConfirm.querySelector('[data-field="fee"]'),
+      successSub: modalSuccess.querySelector('[data-field="success-sub"]'),
+    };
+    const rateValue = 4296.47;
+
+    function showScreen(target) {
+      const toSecond = target === "two";
+      const toThird = target === "three";
+      screenOne.classList.toggle("active", !toSecond && !toThird);
+      screenTwo.classList.toggle("active", toSecond);
+      screenThree.classList.toggle("active", toThird);
+    }
+
+    buyBtn.addEventListener("click", () => showScreen("two"));
+    backBtns.forEach((btn) => btn.addEventListener("click", () => {
+      hideModals();
+      showScreen("one");
+    }));
+    backMain.addEventListener("click", () => {
+      hideModals();
+      showScreen("one");
+    });
+
+    function parseAmount(val) {
+      if (!val) return 0;
+      const cleaned = val.replace(/,/g, "");
+      const num = parseFloat(cleaned);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function updateCtaState() {
+      const amt = parseAmount(amountInput.value);
+      const isPositive = amt > 0;
+      const withinBalance = amt <= available;
+      const isValid = isPositive && withinBalance;
+
+      amountInput.classList.toggle("invalid", !withinBalance && isPositive);
+      cta.classList.toggle("active", isValid);
+      cta.classList.toggle("disabled", !isValid);
+      return { amt, isValid };
+    }
+
+    function formatNumber(value, decimals = 6) {
+      return Number(value).toFixed(decimals);
+    }
+
+    function formatFiat(value) {
+      return `$${Number(value).toFixed(2)}`;
+    }
+
+    function updateConfirmValues(amt) {
+      const receive = amt / rateValue || 0;
+      const fee = receive * 0.00001;
+      fields.receive.textContent = `${formatNumber(receive, 6)} XAUT`;
+      fields.pay.textContent = `${amt} USDT ≈ ${formatFiat(amt)}`;
+      fields.rate.textContent = `1 XAUT ≈ ${rateValue.toLocaleString()} USDT`;
+      fields.fee.textContent = `${formatNumber(fee, 6)} XAUT ≈ ${formatFiat(fee * rateValue)}`;
+      fields.successSub.textContent = `${formatNumber(receive, 6)} XAUT will be added to your balance in a few minutes.`;
+    }
+
+    function hideModals() {
+      modalConfirm.classList.remove("active");
+      modalSuccess.classList.remove("active");
+    }
+
+    amountInput.addEventListener("input", updateCtaState);
+    amountInput.addEventListener("focus", () => {
+      if (amountInput.value === "0") {
+        amountInput.value = "";
+      }
+    });
+    amountInput.addEventListener("blur", () => {
+      if (amountInput.value.trim() === "") {
+        amountInput.value = "0";
+      }
+      updateCtaState();
+    });
+
+    cta.addEventListener("click", () => {
+      const { amt, isValid } = updateCtaState();
+      if (!isValid) return;
+      updateConfirmValues(amt);
+      modalConfirm.classList.add("active");
+    });
+
+    confirmBtn.addEventListener("click", () => {
+      modalConfirm.classList.remove("active");
+      modalSuccess.classList.add("active");
+    });
+
+    closeButtons.forEach((btn) => {
+      btn.addEventListener("click", () => hideModals());
+    });
+
+    returnBtn.addEventListener("click", () => {
+      hideModals();
+      showScreen("three");
+    });
+
+    // Initialize
+    updateCtaState();
+  </script>
+</body>
+</html>
+
