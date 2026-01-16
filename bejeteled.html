@@ -1,0 +1,2271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Bejeteled - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #0a0a1a;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #aaaaaa;
+            --tg-theme-button-color: #667eea;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #1a1a3a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--tg-theme-bg-color, #0a0a1a);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            padding: 10px;
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.7), transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.5), transparent);
+            background-size: 200px 150px;
+            animation: twinkle 4s ease-in-out infinite;
+            opacity: 0.5;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        .game-container {
+            text-align: center;
+            z-index: 1;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: clamp(24px, 6vw, 36px);
+            background: linear-gradient(180deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: 4px;
+            font-weight: bold;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .mode-btn {
+            padding: 6px 16px;
+            font-size: 12px;
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            color: var(--tg-theme-hint-color, #888);
+            border: 1px solid #3a3a5a;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--tg-theme-button-color, #667eea);
+            color: var(--tg-theme-button-text-color, white);
+            border-color: var(--tg-theme-button-color, #667eea);
+        }
+
+        .timer-display {
+            font-size: 24px;
+            color: #4ecdc4;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: none;
+        }
+
+        .timer-display.active {
+            display: block;
+        }
+
+        .timer-display.warning { color: #f7b733; }
+        .timer-display.critical { color: #fc4a1a; animation: pulse 0.3s ease infinite; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .timer-bar.active { display: block; }
+
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            border-radius: 3px;
+            transition: width 0.1s linear;
+        }
+
+        .timer-fill.warning { background: linear-gradient(90deg, #f7b733, #fc4a1a); }
+        .timer-fill.critical { background: linear-gradient(90deg, #fc4a1a, #cc0000); }
+
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            color: var(--tg-theme-hint-color, #aaa);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .info-item span {
+            display: block;
+            color: #ffd700;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .board-frame {
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            margin: 0 auto;
+            display: inline-block;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: rgba(0,0,0,0.3);
+            padding: 4px;
+            border-radius: 8px;
+            width: min(calc(100vw - 50px), 340px);
+            height: min(calc(100vw - 50px), 340px);
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .gem {
+            width: 90%;
+            height: 90%;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            position: relative;
+            border-radius: 4px;
+        }
+
+        .gem:active {
+            transform: scale(1.1);
+        }
+
+        .gem.selected {
+            animation: gemPulse 0.5s ease infinite;
+        }
+
+        .gem.hint {
+            animation: hintPulse 0.8s ease infinite;
+        }
+
+        @keyframes gemPulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.1); filter: brightness(1.3); }
+        }
+
+        @keyframes hintPulse {
+            0%, 100% { transform: scale(1); box-shadow: none; }
+            50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.8); }
+        }
+
+        .gem.matched {
+            animation: explode 0.4s ease forwards;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3) rotate(180deg); opacity: 0.5; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        .gem.falling {
+            animation: drop 0.3s ease;
+        }
+
+        @keyframes drop {
+            0% { transform: translateY(-100%); opacity: 0; }
+            60% { transform: translateY(5%); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .gem svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+
+        .gem-red svg { filter: drop-shadow(0 0 6px rgba(255, 50, 50, 0.5)); }
+        .gem-blue svg { filter: drop-shadow(0 0 6px rgba(50, 150, 255, 0.5)); }
+        .gem-green svg { filter: drop-shadow(0 0 6px rgba(50, 255, 100, 0.5)); }
+        .gem-yellow svg { filter: drop-shadow(0 0 6px rgba(255, 220, 50, 0.5)); }
+        .gem-purple svg { filter: drop-shadow(0 0 6px rgba(180, 100, 255, 0.5)); }
+        .gem-white svg { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5)); }
+        .gem-orange svg { filter: drop-shadow(0 0 6px rgba(255, 150, 50, 0.5)); }
+
+        .gem.flame-gem { animation: flameGlow 0.8s ease infinite; }
+        .gem.flame-gem::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #ff6600, transparent);
+            border-radius: 50%;
+        }
+
+        @keyframes flameGlow {
+            0%, 100% { box-shadow: 0 0 8px rgba(255, 100, 0, 0.6); }
+            50% { box-shadow: 0 0 15px rgba(255, 150, 0, 0.9); }
+        }
+
+        .gem.star-gem { animation: starGlow 0.6s ease infinite; }
+        .gem.star-gem::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #ffff00, transparent);
+            border-radius: 50%;
+        }
+
+        @keyframes starGlow {
+            0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 100, 0.6); }
+            50% { box-shadow: 0 0 18px rgba(255, 255, 150, 1); }
+        }
+
+        .gem.hypercube { animation: hypercubeGlow 0.5s ease infinite; }
+
+        @keyframes hypercubeGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); filter: hue-rotate(0deg); }
+            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 1); filter: hue-rotate(180deg); }
+        }
+
+        .buttons {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            font-size: 13px;
+            background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+            color: var(--tg-theme-text-color, #ddd);
+            border: 1px solid #3a3a5a;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            background: var(--tg-theme-button-color, #667eea);
+        }
+
+        .score-popup {
+            position: fixed;
+            pointer-events: none;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+            animation: scoreFloat 1s ease forwards;
+            z-index: 100;
+        }
+
+        @keyframes scoreFloat {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+        }
+
+        .time-bonus {
+            position: fixed;
+            pointer-events: none;
+            font-size: 20px;
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 0 8px rgba(78, 205, 196, 0.8);
+            animation: timeBonusFloat 1s ease forwards;
+            z-index: 100;
+        }
+
+        @keyframes timeBonusFloat {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-30px) scale(1.1); opacity: 0; }
+        }
+
+        .cascade-text {
+            position: fixed;
+            pointer-events: none;
+            font-size: 28px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+            animation: cascadeFloat 1.2s ease forwards;
+            z-index: 100;
+        }
+
+        @keyframes cascadeFloat {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; }
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .game-over-content {
+            text-align: center;
+            padding: 30px;
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            border-radius: 16px;
+            max-width: 90%;
+        }
+
+        .game-over h2 {
+            font-size: 28px;
+            color: #ffd700;
+            margin-bottom: 15px;
+        }
+
+        .game-over p {
+            font-size: 18px;
+            color: var(--tg-theme-text-color, white);
+            margin-bottom: 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        .lightning {
+            position: fixed;
+            pointer-events: none;
+            background: linear-gradient(90deg, transparent, white, transparent);
+            animation: lightningFlash 0.3s ease forwards;
+            z-index: 50;
+        }
+
+        @keyframes lightningFlash {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .explosion {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: explodeRing 0.5s ease forwards;
+            z-index: 50;
+        }
+
+        @keyframes explodeRing {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        .blitz-countdown {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            animation: countdownPop 0.8s ease forwards;
+            z-index: 150;
+        }
+
+        @keyframes countdownPop {
+            0% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+        }
+
+        /* Touch feedback */
+        .gem.touching {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+
+        .swipe-indicator {
+            position: fixed;
+            pointer-events: none;
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: swipeRipple 0.4s ease forwards;
+            z-index: 50;
+        }
+
+        @keyframes swipeRipple {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Prevent selection */
+        .game-container {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            overscroll-behavior-y: contain;
+        }
+
+        /* Leaderboard & Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 350px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            color: #ffd700;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+
+        .leaderboard-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .leaderboard-tab {
+            padding: 6px 14px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.1);
+            color: var(--tg-theme-hint-color, #888);
+            border: 1px solid #3a3a5a;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .leaderboard-tab.active {
+            background: var(--tg-theme-button-color, #667eea);
+            color: white;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .leaderboard-entry.highlight {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .leaderboard-rank {
+            width: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--tg-theme-hint-color, #888);
+        }
+
+        .leaderboard-entry:nth-child(1) .leaderboard-rank { color: #ffd700; }
+        .leaderboard-entry:nth-child(2) .leaderboard-rank { color: #c0c0c0; }
+        .leaderboard-entry:nth-child(3) .leaderboard-rank { color: #cd7f32; }
+
+        .leaderboard-name {
+            flex: 1;
+            color: var(--tg-theme-text-color, #ddd);
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .leaderboard-score {
+            color: #4ecdc4;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .leaderboard-empty {
+            text-align: center;
+            color: var(--tg-theme-hint-color, #666);
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* Name input */
+        .name-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid #3a3a5a;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .name-input:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #667eea);
+        }
+
+        .new-score-display {
+            font-size: 32px;
+            color: #4ecdc4;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        /* Achievements */
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .achievement-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border: 2px solid transparent;
+        }
+
+        .achievement-badge.unlocked {
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .achievement-badge.locked {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .badge-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .badge-name {
+            font-size: 9px;
+            color: var(--tg-theme-text-color, #ddd);
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .achievements-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4ecdc4;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--tg-theme-hint-color, #888);
+            text-transform: uppercase;
+        }
+
+        .achievements-progress {
+            text-align: center;
+            color: var(--tg-theme-hint-color, #888);
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 300;
+            animation: achievementSlide 0.4s ease, achievementFade 0.4s ease 2.5s forwards;
+        }
+
+        @keyframes achievementSlide {
+            0% { transform: translateX(-50%) translateY(-80px); opacity: 0; }
+            100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        @keyframes achievementFade {
+            0% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-15px); }
+        }
+
+        .achievement-popup-icon { font-size: 28px; }
+        .achievement-popup-title { color: #ffd700; font-size: 10px; text-transform: uppercase; }
+        .achievement-popup-name { color: white; font-size: 14px; font-weight: bold; }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+            border: 1px solid #3a3a5a;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="sound-toggle" onclick="toggleSound()" id="sound-toggle">🔊</div>
+
+    <div class="game-container">
+        <h1>BEJETELED</h1>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" id="mode-classic" onclick="setMode('classic')">Classic</button>
+            <button class="mode-btn" id="mode-blitz" onclick="setMode('blitz')">Blitz</button>
+        </div>
+
+        <div class="timer-display" id="timer-display">1:00</div>
+        <div class="timer-bar" id="timer-bar">
+            <div class="timer-fill" id="timer-fill" style="width: 100%"></div>
+        </div>
+
+        <div class="info-bar">
+            <div class="info-item">Score<span id="score">0</span></div>
+            <div class="info-item" id="level-container">Level<span id="level">1</span></div>
+            <div class="info-item" id="goal-container">Goal<span id="goal">1000</span></div>
+        </div>
+
+        <div class="board-frame">
+            <div id="game-board"></div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn" onclick="showHint()">Hint</button>
+            <button class="btn" onclick="showLeaderboard()">Scores</button>
+            <button class="btn" onclick="showAchievements()">🏆</button>
+            <button class="btn" onclick="resetGame()">New</button>
+        </div>
+    </div>
+
+    <div id="game-over" class="game-over hidden">
+        <div class="game-over-content">
+            <h2 id="game-over-title">GAME OVER</h2>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <button class="btn" onclick="resetGame()">Play Again</button>
+            <button class="btn" onclick="showLeaderboard()">Leaderboard</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>LEADERBOARD</h2>
+            <div class="leaderboard-tabs">
+                <button class="leaderboard-tab active" id="tab-classic" onclick="switchLeaderboardTab('classic')">Classic</button>
+                <button class="leaderboard-tab" id="tab-blitz" onclick="switchLeaderboardTab('blitz')">Blitz</button>
+            </div>
+            <div id="leaderboard-list"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="hideLeaderboard()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Name Input Modal -->
+    <div id="name-input-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>NEW HIGH SCORE!</h2>
+            <p id="highscore-rank" style="text-align:center;color:#aaa;margin-bottom:10px;">You ranked #1!</p>
+            <div class="new-score-display" id="new-score-display">0</div>
+            <input type="text" class="name-input" id="player-name-input" placeholder="Enter your name" maxlength="15" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="btn" onclick="submitHighScore()">Submit</button>
+                <button class="btn" onclick="skipHighScore()">Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Modal -->
+    <div id="achievements-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>ACHIEVEMENTS</h2>
+            <div class="achievements-stats" id="achievements-stats"></div>
+            <div class="achievements-grid" id="achievements-grid"></div>
+            <div class="achievements-progress" id="achievements-progress"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="hideAchievements()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram WebApp integration
+        const tg = window.Telegram?.WebApp;
+
+        if (tg) {
+            tg.ready();
+            tg.expand();
+
+            // Apply Telegram theme
+            if (tg.themeParams) {
+                document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#0a0a1a');
+                document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#ffffff');
+                document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#aaaaaa');
+                document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#667eea');
+                document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+                document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#1a1a3a');
+            }
+        }
+
+        // Haptic feedback helper
+        function haptic(type = 'light') {
+            if (tg?.HapticFeedback) {
+                if (type === 'light') tg.HapticFeedback.impactOccurred('light');
+                else if (type === 'medium') tg.HapticFeedback.impactOccurred('medium');
+                else if (type === 'heavy') tg.HapticFeedback.impactOccurred('heavy');
+                else if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+                else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+            }
+        }
+
+        // ==================== AUDIO SYSTEM ====================
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let soundEnabled = localStorage.getItem('bejeteled_sound') !== 'false';
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('bejeteled_sound', soundEnabled);
+            document.getElementById('sound-toggle').textContent = soundEnabled ? '🔊' : '🔇';
+            if (soundEnabled) {
+                initAudio();
+                playTone(600, 0.1, 'sine', 0.2);
+            }
+        }
+
+        function updateSoundIcon() {
+            document.getElementById('sound-toggle').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        function playTone(frequency, duration, type = 'sine', volume = 0.3) {
+            if (!soundEnabled || !audioCtx) return;
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+
+            gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration);
+        }
+
+        function playSelect() {
+            initAudio();
+            playTone(600, 0.1, 'sine', 0.2);
+        }
+
+        function playSwap() {
+            initAudio();
+            playTone(400, 0.1, 'sine', 0.2);
+            setTimeout(() => playTone(500, 0.1, 'sine', 0.2), 50);
+        }
+
+        function playMatch(cascade = 1) {
+            initAudio();
+            const baseFreq = 400 + (cascade * 100);
+            playTone(baseFreq, 0.15, 'square', 0.12);
+            setTimeout(() => playTone(baseFreq * 1.25, 0.15, 'square', 0.12), 80);
+            setTimeout(() => playTone(baseFreq * 1.5, 0.2, 'square', 0.12), 160);
+        }
+
+        function playInvalid() {
+            initAudio();
+            playTone(200, 0.15, 'sawtooth', 0.15);
+            setTimeout(() => playTone(150, 0.2, 'sawtooth', 0.15), 100);
+        }
+
+        function playLevelUp() {
+            initAudio();
+            [523, 659, 784, 1047].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.2, 'sine', 0.2), i * 100);
+            });
+        }
+
+        function playGameOver() {
+            initAudio();
+            [400, 350, 300, 250].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.3, 'sawtooth', 0.15), i * 150);
+            });
+        }
+
+        function playSpecialCreate() {
+            initAudio();
+            playTone(800, 0.1, 'sine', 0.2);
+            setTimeout(() => playTone(1000, 0.1, 'sine', 0.2), 50);
+            setTimeout(() => playTone(1200, 0.15, 'sine', 0.2), 100);
+        }
+
+        function playFlame() {
+            initAudio();
+            playTone(150, 0.3, 'sawtooth', 0.25);
+            playTone(100, 0.4, 'square', 0.15);
+        }
+
+        function playStar() {
+            initAudio();
+            [600, 800, 1000, 1200, 1000, 800].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.08, 'sawtooth', 0.12), i * 30);
+            });
+        }
+
+        function playHypercube() {
+            initAudio();
+            [400, 500, 600, 800, 1000, 1200].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.15, 'sine', 0.15), i * 50);
+            });
+            setTimeout(() => {
+                playTone(1400, 0.3, 'sine', 0.2);
+                playTone(1400 * 1.5, 0.3, 'sine', 0.15);
+            }, 300);
+        }
+
+        function playTimeBonus() {
+            initAudio();
+            playTone(880, 0.1, 'sine', 0.2);
+            setTimeout(() => playTone(1100, 0.15, 'sine', 0.2), 60);
+        }
+
+        function playHighScore() {
+            initAudio();
+            [523, 659, 784, 880, 1047].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.2, 'sine', 0.2), i * 100);
+            });
+        }
+
+        function playAchievement() {
+            initAudio();
+            [523, 659, 784, 1047, 784, 1047].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.15, 'sine', 0.15), i * 80);
+            });
+        }
+
+        const BOARD_SIZE = 8;
+        const GEM_TYPES = [
+            { name: 'red', colors: ['#ff4444', '#cc0000', '#ff6666', '#990000'] },
+            { name: 'blue', colors: ['#4488ff', '#0044cc', '#66aaff', '#002299'] },
+            { name: 'green', colors: ['#44dd44', '#00aa00', '#66ff66', '#007700'] },
+            { name: 'yellow', colors: ['#ffdd00', '#ccaa00', '#ffee44', '#997700'] },
+            { name: 'purple', colors: ['#bb66ff', '#8833cc', '#dd99ff', '#6600aa'] },
+            { name: 'white', colors: ['#ffffff', '#cccccc', '#ffffff', '#999999'] },
+            { name: 'orange', colors: ['#ff8800', '#cc5500', '#ffaa44', '#993300'] }
+        ];
+
+        const HYPERCUBE = { name: 'hypercube', colors: ['#ffffff', '#aaaaaa', '#ffffff', '#888888'], special: 'hypercube' };
+
+        let board = [];
+        let selectedTile = null;
+        let score = 0;
+        let level = 1;
+        let goal = 1000;
+        let isAnimating = false;
+        let hintTiles = [];
+
+        // Game mode
+        let gameMode = 'classic';
+        let blitzTime = 60;
+        let timeRemaining = 60;
+        let timerInterval = null;
+        let gameStarted = false;
+
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTile = null;
+        let isTouching = false;
+        const SWIPE_THRESHOLD = 25;
+
+        function createGemSVG(colors) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="grad-${colors[0].replace('#','')}" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:${colors[2]};stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:${colors[0]};stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:${colors[3]};stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <polygon points="50,5 95,35 95,70 50,95 5,70 5,35"
+                             fill="url(#grad-${colors[0].replace('#','')})"
+                             stroke="${colors[1]}"
+                             stroke-width="2"/>
+                    <polygon points="50,5 75,25 50,40 25,25"
+                             fill="${colors[2]}"
+                             opacity="0.6"/>
+                    <polygon points="5,35 25,25 50,40 50,70 5,70"
+                             fill="${colors[1]}"
+                             opacity="0.4"/>
+                    <polygon points="95,35 75,25 50,40 50,70 95,70"
+                             fill="${colors[2]}"
+                             opacity="0.3"/>
+                    <ellipse cx="35" cy="25" rx="8" ry="4"
+                             fill="white"
+                             opacity="0.6"/>
+                </svg>
+            `;
+        }
+
+        function createHypercubeSVG() {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="hypercube-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#aaddff;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#ffffff;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <polygon points="50,5 95,50 50,95 5,50"
+                             fill="url(#hypercube-grad)"
+                             stroke="#88ccff"
+                             stroke-width="2"/>
+                    <polygon points="50,20 80,50 50,80 20,50"
+                             fill="rgba(200,230,255,0.5)"
+                             stroke="#aaddff"
+                             stroke-width="1"/>
+                    <polygon points="50,35 65,50 50,65 35,50"
+                             fill="rgba(255,255,255,0.8)"
+                             stroke="#ccddff"
+                             stroke-width="1"/>
+                    <circle cx="50" cy="50" r="5" fill="white"/>
+                </svg>
+            `;
+        }
+
+        function init() {
+            createBoard();
+            removeInitialMatches();
+            renderBoard();
+            if (!hasValidMoves()) {
+                init();
+            }
+        }
+
+        function createBoard() {
+            board = [];
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                board[row] = [];
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    board[row][col] = getRandomGem();
+                }
+            }
+        }
+
+        function removeInitialMatches() {
+            let hasMatches = true;
+            while (hasMatches) {
+                const matches = findMatches();
+                if (matches.length > 0) {
+                    matches.forEach(m => {
+                        board[m.row][m.col] = getRandomGem();
+                    });
+                } else {
+                    hasMatches = false;
+                }
+            }
+        }
+
+        function getRandomGem() {
+            const gem = GEM_TYPES[Math.floor(Math.random() * GEM_TYPES.length)];
+            return { ...gem, special: null };
+        }
+
+        function renderBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+
+                    const gemData = board[row][col];
+                    const gem = document.createElement('div');
+                    gem.className = `gem gem-${gemData.name}`;
+
+                    if (gemData.special === 'flame') gem.classList.add('flame-gem');
+                    else if (gemData.special === 'star') gem.classList.add('star-gem');
+                    else if (gemData.special === 'hypercube') gem.classList.add('hypercube');
+
+                    gem.innerHTML = gemData.special === 'hypercube' ? createHypercubeSVG() : createGemSVG(gemData.colors);
+
+                    gem.dataset.row = row;
+                    gem.dataset.col = col;
+                    gem.addEventListener('click', () => handleGemClick(row, col));
+                    gem.addEventListener('touchstart', (e) => handleTouchStart(e, row, col), { passive: false });
+                    gem.addEventListener('touchmove', (e) => handleTouchMove(e), { passive: false });
+                    gem.addEventListener('touchend', (e) => handleTouchEnd(e), { passive: false });
+
+                    cell.appendChild(gem);
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        async function handleGemClick(row, col) {
+            if (isAnimating) return;
+
+            if (gameMode === 'blitz' && !gameStarted && !timerInterval) {
+                isAnimating = true;
+                await startBlitzCountdown();
+                isAnimating = false;
+            }
+
+            if (gameMode === 'blitz' && !gameStarted && timerInterval === null) return;
+
+            clearHints();
+            const clicked = { row, col };
+
+            if (!selectedTile) {
+                selectedTile = clicked;
+                highlightGem(row, col);
+                haptic('light');
+                playSelect();
+            } else {
+                if (selectedTile.row === row && selectedTile.col === col) {
+                    clearSelection();
+                    selectedTile = null;
+                } else if (isAdjacent(selectedTile, clicked)) {
+                    haptic('medium');
+                    playSwap();
+                    swapGems(selectedTile, clicked);
+                } else {
+                    clearSelection();
+                    selectedTile = clicked;
+                    highlightGem(row, col);
+                    haptic('light');
+                    playSelect();
+                }
+            }
+        }
+
+        function handleTouchStart(e, row, col) {
+            if (isAnimating) return;
+            e.preventDefault();
+
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTile = { row, col };
+            isTouching = true;
+
+            const gem = e.target.closest('.gem');
+            if (gem) gem.classList.add('touching');
+        }
+
+        function handleTouchMove(e) {
+            if (!isTouching || !touchStartTile) return;
+            e.preventDefault();
+        }
+
+        async function handleTouchEnd(e) {
+            if (!isTouching || !touchStartTile) return;
+            e.preventDefault();
+
+            document.querySelectorAll('.gem.touching').forEach(g => g.classList.remove('touching'));
+
+            const touch = e.changedTouches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const absDeltaX = Math.abs(deltaX);
+            const absDeltaY = Math.abs(deltaY);
+
+            if (absDeltaX < SWIPE_THRESHOLD && absDeltaY < SWIPE_THRESHOLD) {
+                isTouching = false;
+                await handleGemClick(touchStartTile.row, touchStartTile.col);
+                touchStartTile = null;
+                return;
+            }
+
+            let targetTile = null;
+
+            if (absDeltaX > absDeltaY) {
+                if (deltaX > SWIPE_THRESHOLD && touchStartTile.col < BOARD_SIZE - 1) {
+                    targetTile = { row: touchStartTile.row, col: touchStartTile.col + 1 };
+                } else if (deltaX < -SWIPE_THRESHOLD && touchStartTile.col > 0) {
+                    targetTile = { row: touchStartTile.row, col: touchStartTile.col - 1 };
+                }
+            } else {
+                if (deltaY > SWIPE_THRESHOLD && touchStartTile.row < BOARD_SIZE - 1) {
+                    targetTile = { row: touchStartTile.row + 1, col: touchStartTile.col };
+                } else if (deltaY < -SWIPE_THRESHOLD && touchStartTile.row > 0) {
+                    targetTile = { row: touchStartTile.row - 1, col: touchStartTile.col };
+                }
+            }
+
+            if (targetTile && !isAnimating) {
+                if (gameMode === 'blitz' && !gameStarted && !timerInterval) {
+                    isAnimating = true;
+                    await startBlitzCountdown();
+                    isAnimating = false;
+                }
+
+                if (gameMode === 'blitz' && !gameStarted && timerInterval === null) {
+                    isTouching = false;
+                    touchStartTile = null;
+                    return;
+                }
+
+                clearSelection();
+                clearHints();
+                selectedTile = null;
+                haptic('medium');
+                playSwap();
+                createSwipeIndicator(touchStartTile.row, touchStartTile.col);
+                await swapGems(touchStartTile, targetTile);
+            }
+
+            isTouching = false;
+            touchStartTile = null;
+        }
+
+        function createSwipeIndicator(row, col) {
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / BOARD_SIZE;
+
+            const indicator = document.createElement('div');
+            indicator.className = 'swipe-indicator';
+            indicator.style.left = (rect.left + col * cellSize + cellSize / 2 - 15) + 'px';
+            indicator.style.top = (rect.top + row * cellSize + cellSize / 2 - 15) + 'px';
+            document.body.appendChild(indicator);
+            setTimeout(() => indicator.remove(), 400);
+        }
+
+        function isAdjacent(t1, t2) {
+            const rowDiff = Math.abs(t1.row - t2.row);
+            const colDiff = Math.abs(t1.col - t2.col);
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+
+        function highlightGem(row, col) {
+            const gems = document.querySelectorAll('.gem');
+            gems[row * BOARD_SIZE + col].classList.add('selected');
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.gem.selected').forEach(g => g.classList.remove('selected'));
+        }
+
+        function clearHints() {
+            document.querySelectorAll('.gem.hint').forEach(g => g.classList.remove('hint'));
+            hintTiles = [];
+        }
+
+        async function swapGems(t1, t2) {
+            isAnimating = true;
+            clearSelection();
+
+            const gem1 = board[t1.row][t1.col];
+            const gem2 = board[t2.row][t2.col];
+
+            // Hypercube swap
+            if (gem1.special === 'hypercube' || gem2.special === 'hypercube') {
+                const hypercubePos = gem1.special === 'hypercube' ? t1 : t2;
+                const targetGem = gem1.special === 'hypercube' ? gem2 : gem1;
+
+                await activateHypercube(hypercubePos, targetGem.name);
+                await processMatches();
+                checkLevelUp();
+
+                if (!hasValidMoves()) gameOver();
+                selectedTile = null;
+                isAnimating = false;
+                return;
+            }
+
+            // Normal swap
+            const temp = board[t1.row][t1.col];
+            board[t1.row][t1.col] = board[t2.row][t2.col];
+            board[t2.row][t2.col] = temp;
+
+            renderBoard();
+
+            const matches = findMatches();
+            if (matches.length > 0) {
+                await processMatches(t1, t2);
+                checkLevelUp();
+                if (!hasValidMoves()) gameOver();
+            } else {
+                await sleep(150);
+                haptic('error');
+                playInvalid();
+                // Swap back
+                const temp = board[t1.row][t1.col];
+                board[t1.row][t1.col] = board[t2.row][t2.col];
+                board[t2.row][t2.col] = temp;
+                renderBoard();
+            }
+
+            selectedTile = null;
+            isAnimating = false;
+        }
+
+        async function activateHypercube(pos, targetColor) {
+            haptic('heavy');
+            playHypercube();
+
+            const targets = [];
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col].name === targetColor) {
+                        targets.push({ row, col });
+                    }
+                }
+            }
+            targets.push(pos);
+
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            targets.forEach(t => createLightning(rect, pos, t));
+
+            await sleep(300);
+
+            const gems = document.querySelectorAll('.gem');
+            targets.forEach(t => {
+                gems[t.row * BOARD_SIZE + t.col].classList.add('matched');
+            });
+
+            const points = targets.length * 20;
+            score += points;
+            document.getElementById('score').textContent = score;
+            showScorePopup(points, pos.row, pos.col);
+
+            await sleep(400);
+
+            targets.forEach(t => {
+                board[t.row][t.col] = null;
+            });
+
+            dropGems();
+            fillBoard();
+            renderBoard();
+        }
+
+        function createLightning(boardRect, from, to) {
+            const cellSize = boardRect.width / BOARD_SIZE;
+            const x1 = boardRect.left + (from.col * cellSize) + cellSize / 2;
+            const y1 = boardRect.top + (from.row * cellSize) + cellSize / 2;
+            const x2 = boardRect.left + (to.col * cellSize) + cellSize / 2;
+            const y2 = boardRect.top + (to.row * cellSize) + cellSize / 2;
+
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+            const lightning = document.createElement('div');
+            lightning.className = 'lightning';
+            lightning.style.width = length + 'px';
+            lightning.style.height = '3px';
+            lightning.style.left = x1 + 'px';
+            lightning.style.top = y1 + 'px';
+            lightning.style.transformOrigin = '0 50%';
+            lightning.style.transform = `rotate(${angle}deg)`;
+
+            document.body.appendChild(lightning);
+            setTimeout(() => lightning.remove(), 300);
+        }
+
+        function findMatches() {
+            const matches = new Set();
+            const matchGroups = [];
+
+            // Horizontal
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                let col = 0;
+                while (col < BOARD_SIZE) {
+                    const gem = board[row][col];
+                    if (!gem) { col++; continue; }
+
+                    let matchLen = 1;
+                    while (col + matchLen < BOARD_SIZE && board[row][col + matchLen]?.name === gem.name) {
+                        matchLen++;
+                    }
+
+                    if (matchLen >= 3) {
+                        const group = { type: 'horizontal', color: gem.name, length: matchLen, positions: [] };
+                        for (let i = 0; i < matchLen; i++) {
+                            matches.add(`${row},${col + i}`);
+                            group.positions.push({ row, col: col + i });
+                        }
+                        matchGroups.push(group);
+                    }
+                    col += Math.max(matchLen, 1);
+                }
+            }
+
+            // Vertical
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                let row = 0;
+                while (row < BOARD_SIZE) {
+                    const gem = board[row][col];
+                    if (!gem) { row++; continue; }
+
+                    let matchLen = 1;
+                    while (row + matchLen < BOARD_SIZE && board[row + matchLen]?.[col]?.name === gem.name) {
+                        matchLen++;
+                    }
+
+                    if (matchLen >= 3) {
+                        const group = { type: 'vertical', color: gem.name, length: matchLen, positions: [] };
+                        for (let i = 0; i < matchLen; i++) {
+                            matches.add(`${row + i},${col}`);
+                            group.positions.push({ row: row + i, col });
+                        }
+                        matchGroups.push(group);
+                    }
+                    row += Math.max(matchLen, 1);
+                }
+            }
+
+            const result = Array.from(matches).map(m => {
+                const [row, col] = m.split(',').map(Number);
+                return { row, col };
+            });
+            result.matchGroups = matchGroups;
+            return result;
+        }
+
+        function detectSpecialGems(matchGroups, swappedTiles) {
+            const specials = [];
+
+            // L/T shapes
+            for (let i = 0; i < matchGroups.length; i++) {
+                for (let j = i + 1; j < matchGroups.length; j++) {
+                    const g1 = matchGroups[i];
+                    const g2 = matchGroups[j];
+
+                    if (g1.color !== g2.color || g1.type === g2.type) continue;
+
+                    for (const p1 of g1.positions) {
+                        for (const p2 of g2.positions) {
+                            if (p1.row === p2.row && p1.col === p2.col) {
+                                specials.push({ type: 'star', row: p1.row, col: p1.col, color: g1.color });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5+ matches (hypercube) and 4 matches (flame)
+            for (const group of matchGroups) {
+                const isPartOfLT = specials.some(s =>
+                    group.positions.some(p => p.row === s.row && p.col === s.col)
+                );
+
+                if (group.length >= 5 && !isPartOfLT) {
+                    let pos = group.positions[Math.floor(group.length / 2)];
+                    if (swappedTiles) {
+                        const swapInGroup = group.positions.find(p =>
+                            (p.row === swappedTiles[0].row && p.col === swappedTiles[0].col) ||
+                            (p.row === swappedTiles[1].row && p.col === swappedTiles[1].col)
+                        );
+                        if (swapInGroup) pos = swapInGroup;
+                    }
+                    specials.push({ type: 'hypercube', row: pos.row, col: pos.col, color: group.color });
+                } else if (group.length === 4 && !isPartOfLT) {
+                    let pos = group.positions[Math.floor(group.length / 2)];
+                    if (swappedTiles) {
+                        const swapInGroup = group.positions.find(p =>
+                            (p.row === swappedTiles[0].row && p.col === swappedTiles[0].col) ||
+                            (p.row === swappedTiles[1].row && p.col === swappedTiles[1].col)
+                        );
+                        if (swapInGroup) pos = swapInGroup;
+                    }
+                    specials.push({ type: 'flame', row: pos.row, col: pos.col, color: group.color });
+                }
+            }
+
+            return specials;
+        }
+
+        async function processMatches(t1 = null, t2 = null) {
+            let cascade = 0;
+            const swappedTiles = (t1 && t2) ? [t1, t2] : null;
+            let isFirstMatch = true;
+
+            while (true) {
+                const matches = findMatches();
+                if (matches.length === 0) break;
+
+                cascade++;
+
+                // Track stats for achievements
+                updateStat('totalMatches', 1);
+                updateStat('totalGemsMatched', matches.length);
+                updateStat('maxCascade', cascade, true);
+
+                // Activate special gems
+                const specialsToActivate = [];
+                matches.forEach(m => {
+                    const gem = board[m.row][m.col];
+                    if (gem && gem.special && gem.special !== 'hypercube') {
+                        specialsToActivate.push({ ...m, special: gem.special, color: gem.name });
+                    }
+                });
+
+                // Detect new special gems
+                const newSpecials = detectSpecialGems(matches.matchGroups || [], isFirstMatch ? swappedTiles : null);
+                isFirstMatch = false;
+
+                // Track special gem creation for achievements
+                newSpecials.forEach(s => {
+                    if (s.type === 'flame') updateStat('flameGemsCreated', 1);
+                    else if (s.type === 'star') updateStat('starGemsCreated', 1);
+                    else if (s.type === 'hypercube') updateStat('hypercubesCreated', 1);
+                });
+
+                // Play special gem creation sound
+                if (newSpecials.length > 0) {
+                    playSpecialCreate();
+                }
+
+                const basePoints = matches.length * 10;
+                const cascadeBonus = cascade > 1 ? cascade * 50 : 0;
+                const points = basePoints + cascadeBonus;
+                score += points;
+
+                document.getElementById('score').textContent = score;
+
+                playMatch(cascade);
+
+                if (cascade > 1) {
+                    haptic('success');
+                    showCascadeText(cascade);
+                } else {
+                    haptic('medium');
+                }
+
+                // Blitz time bonus
+                if (gameMode === 'blitz' && gameStarted) {
+                    let timeBonus = 0;
+                    if (matches.length >= 5) timeBonus = 3;
+                    else if (matches.length >= 4) timeBonus = 2;
+                    else if (cascade > 1) timeBonus = 1;
+
+                    if (timeBonus > 0) {
+                        timeRemaining = Math.min(timeRemaining + timeBonus, blitzTime + 30);
+                        updateTimerDisplay();
+                        showTimeBonus(timeBonus);
+                        playTimeBonus();
+                    }
+                }
+
+                const gems = document.querySelectorAll('.gem');
+                matches.forEach(m => {
+                    gems[m.row * BOARD_SIZE + m.col].classList.add('matched');
+                });
+
+                // Show score popup
+                if (matches.length > 0) {
+                    const midMatch = matches[Math.floor(matches.length / 2)];
+                    showScorePopup(points, midMatch.row, midMatch.col);
+                }
+
+                await sleep(350);
+
+                // Activate specials
+                for (const special of specialsToActivate) {
+                    if (special.special === 'flame') {
+                        await activateFlameGem(special);
+                    } else if (special.special === 'star') {
+                        await activateStarGem(special);
+                    }
+                }
+
+                // Remove matched gems
+                matches.forEach(m => {
+                    board[m.row][m.col] = null;
+                });
+
+                // Create new special gems
+                for (const s of newSpecials) {
+                    const gemType = GEM_TYPES.find(g => g.name === s.color) || GEM_TYPES[0];
+                    if (s.type === 'hypercube') {
+                        board[s.row][s.col] = { ...HYPERCUBE };
+                    } else {
+                        board[s.row][s.col] = { ...gemType, special: s.type };
+                    }
+                }
+
+                dropGems();
+                fillBoard();
+                renderBoard();
+
+                await sleep(200);
+            }
+        }
+
+        async function activateFlameGem(pos) {
+            haptic('heavy');
+            playFlame();
+            const targets = [];
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const nr = pos.row + dr;
+                    const nc = pos.col + dc;
+                    if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc]) {
+                        targets.push({ row: nr, col: nc });
+                    }
+                }
+            }
+
+            createExplosion(pos.row, pos.col, '#ff6600');
+
+            const gems = document.querySelectorAll('.gem');
+            targets.forEach(t => {
+                gems[t.row * BOARD_SIZE + t.col].classList.add('matched');
+            });
+
+            await sleep(300);
+
+            targets.forEach(t => {
+                board[t.row][t.col] = null;
+            });
+
+            const points = targets.length * 15;
+            score += points;
+            document.getElementById('score').textContent = score;
+        }
+
+        async function activateStarGem(pos) {
+            haptic('heavy');
+            playStar();
+            const targets = [];
+
+            // Row
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (board[pos.row][c]) targets.push({ row: pos.row, col: c });
+            }
+            // Column
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                if (board[r][pos.col] && r !== pos.row) targets.push({ row: r, col: pos.col });
+            }
+
+            createExplosion(pos.row, pos.col, '#ffff00');
+
+            const gems = document.querySelectorAll('.gem');
+            targets.forEach(t => {
+                gems[t.row * BOARD_SIZE + t.col].classList.add('matched');
+            });
+
+            await sleep(300);
+
+            targets.forEach(t => {
+                board[t.row][t.col] = null;
+            });
+
+            const points = targets.length * 15;
+            score += points;
+            document.getElementById('score').textContent = score;
+        }
+
+        function createExplosion(row, col, color) {
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / BOARD_SIZE;
+
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.width = '40px';
+            explosion.style.height = '40px';
+            explosion.style.left = (rect.left + col * cellSize + cellSize / 2 - 20) + 'px';
+            explosion.style.top = (rect.top + row * cellSize + cellSize / 2 - 20) + 'px';
+            explosion.style.background = `radial-gradient(circle, ${color}, transparent)`;
+            document.body.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function dropGems() {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                let emptyRow = BOARD_SIZE - 1;
+                for (let row = BOARD_SIZE - 1; row >= 0; row--) {
+                    if (board[row][col] !== null) {
+                        if (row !== emptyRow) {
+                            board[emptyRow][col] = board[row][col];
+                            board[row][col] = null;
+                        }
+                        emptyRow--;
+                    }
+                }
+            }
+        }
+
+        function fillBoard() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col] === null) {
+                        board[row][col] = getRandomGem();
+                    }
+                }
+            }
+        }
+
+        function showScorePopup(points, row, col) {
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / BOARD_SIZE;
+
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = '+' + points;
+            popup.style.left = (rect.left + col * cellSize + cellSize / 2) + 'px';
+            popup.style.top = (rect.top + row * cellSize) + 'px';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function showTimeBonus(seconds) {
+            const popup = document.createElement('div');
+            popup.className = 'time-bonus';
+            popup.textContent = '+' + seconds + 's';
+            popup.style.left = '50%';
+            popup.style.top = '20%';
+            popup.style.transform = 'translateX(-50%)';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function showCascadeText(cascade) {
+            const text = document.createElement('div');
+            text.className = 'cascade-text';
+            text.textContent = cascade + 'x CASCADE!';
+            text.style.left = '50%';
+            text.style.top = '50%';
+            document.body.appendChild(text);
+            setTimeout(() => text.remove(), 1200);
+        }
+
+        function hasValidMoves() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    // Check right swap
+                    if (col < BOARD_SIZE - 1) {
+                        swap(row, col, row, col + 1);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row, col + 1);
+                            return true;
+                        }
+                        swap(row, col, row, col + 1);
+                    }
+                    // Check down swap
+                    if (row < BOARD_SIZE - 1) {
+                        swap(row, col, row + 1, col);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row + 1, col);
+                            return true;
+                        }
+                        swap(row, col, row + 1, col);
+                    }
+                }
+            }
+            return false;
+        }
+
+        function swap(r1, c1, r2, c2) {
+            const temp = board[r1][c1];
+            board[r1][c1] = board[r2][c2];
+            board[r2][c2] = temp;
+        }
+
+        function findHintMove() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (col < BOARD_SIZE - 1) {
+                        swap(row, col, row, col + 1);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row, col + 1);
+                            return [{ row, col }, { row, col: col + 1 }];
+                        }
+                        swap(row, col, row, col + 1);
+                    }
+                    if (row < BOARD_SIZE - 1) {
+                        swap(row, col, row + 1, col);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row + 1, col);
+                            return [{ row, col }, { row: row + 1, col }];
+                        }
+                        swap(row, col, row + 1, col);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function showHint() {
+            if (isAnimating) return;
+            clearHints();
+            haptic('light');
+
+            const hint = findHintMove();
+            if (hint) {
+                hintTiles = hint;
+                const gems = document.querySelectorAll('.gem');
+                hint.forEach(t => {
+                    gems[t.row * BOARD_SIZE + t.col].classList.add('hint');
+                });
+            }
+        }
+
+        function checkLevelUp() {
+            if (gameMode !== 'classic') return;
+
+            if (score >= goal) {
+                level++;
+                goal = level * 1000 + (level - 1) * 500;
+                document.getElementById('level').textContent = level;
+                document.getElementById('goal').textContent = goal;
+                haptic('success');
+                playLevelUp();
+                updateStat('highestLevel', level, true);
+            }
+        }
+
+        function setMode(mode) {
+            if (isAnimating) return;
+            gameMode = mode;
+
+            document.getElementById('mode-classic').classList.toggle('active', mode === 'classic');
+            document.getElementById('mode-blitz').classList.toggle('active', mode === 'blitz');
+
+            document.getElementById('timer-display').classList.toggle('active', mode === 'blitz');
+            document.getElementById('timer-bar').classList.toggle('active', mode === 'blitz');
+            document.getElementById('level-container').style.display = mode === 'classic' ? 'block' : 'none';
+            document.getElementById('goal-container').style.display = mode === 'classic' ? 'block' : 'none';
+
+            haptic('light');
+            resetGame();
+        }
+
+        async function startBlitzCountdown() {
+            for (let i = 3; i >= 1; i--) {
+                const countdown = document.createElement('div');
+                countdown.className = 'blitz-countdown';
+                countdown.textContent = i;
+                document.body.appendChild(countdown);
+                haptic('medium');
+                await sleep(800);
+                countdown.remove();
+            }
+
+            const goText = document.createElement('div');
+            goText.className = 'blitz-countdown';
+            goText.textContent = 'GO!';
+            document.body.appendChild(goText);
+            haptic('heavy');
+            await sleep(600);
+            goText.remove();
+
+            gameStarted = true;
+            startTimer();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    gameStarted = false;
+                    gameOver("TIME'S UP!");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timer-display').textContent = display;
+
+            const fill = document.getElementById('timer-fill');
+            const percent = (timeRemaining / blitzTime) * 100;
+            fill.style.width = percent + '%';
+
+            const timerEl = document.getElementById('timer-display');
+            timerEl.classList.remove('warning', 'critical');
+            fill.classList.remove('warning', 'critical');
+
+            if (timeRemaining <= 10) {
+                timerEl.classList.add('critical');
+                fill.classList.add('critical');
+            } else if (timeRemaining <= 20) {
+                timerEl.classList.add('warning');
+                fill.classList.add('warning');
+            }
+        }
+
+        function gameOver(title = 'NO MORE MOVES!') {
+            haptic('error');
+            document.getElementById('game-over-title').textContent = title;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('game-over').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            document.getElementById('game-over').classList.add('hidden');
+
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            score = 0;
+            level = 1;
+            goal = 1000;
+            gameStarted = false;
+            timeRemaining = blitzTime;
+            selectedTile = null;
+            isAnimating = false;
+
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('goal').textContent = goal;
+
+            if (gameMode === 'blitz') {
+                updateTimerDisplay();
+            }
+
+            haptic('medium');
+            init();
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ==================== LEADERBOARD ====================
+        const MAX_LEADERBOARD_ENTRIES = 10;
+        let currentLeaderboardTab = 'classic';
+        let pendingScore = null;
+        let lastPlayerName = localStorage.getItem('bejeteled_lastPlayer') || '';
+
+        function getLeaderboard(mode) {
+            const key = `bejeteled_leaderboard_${mode}`;
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveLeaderboard(mode, leaderboard) {
+            localStorage.setItem(`bejeteled_leaderboard_${mode}`, JSON.stringify(leaderboard));
+        }
+
+        function isHighScore(finalScore, mode) {
+            if (finalScore <= 0) return false;
+            const leaderboard = getLeaderboard(mode);
+            if (leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
+            return finalScore > leaderboard[leaderboard.length - 1].score;
+        }
+
+        function getHighScoreRank(finalScore, mode) {
+            const leaderboard = getLeaderboard(mode);
+            let rank = 1;
+            for (const entry of leaderboard) {
+                if (finalScore > entry.score) break;
+                rank++;
+            }
+            return rank;
+        }
+
+        function checkHighScore(finalScore, mode) {
+            updateStat('highestScore', finalScore, true);
+            if (mode === 'blitz') updateStat('highestBlitzScore', finalScore, true);
+
+            if (isHighScore(finalScore, mode)) {
+                pendingScore = { score: finalScore, mode: mode };
+                showNameInput(finalScore, getHighScoreRank(finalScore, mode));
+            } else {
+                document.getElementById('game-over').classList.remove('hidden');
+                playGameOver();
+            }
+        }
+
+        function showNameInput(finalScore, rank) {
+            document.getElementById('new-score-display').textContent = finalScore.toLocaleString();
+            document.getElementById('highscore-rank').textContent = `You ranked #${rank}!`;
+            document.getElementById('player-name-input').value = lastPlayerName;
+            document.getElementById('name-input-overlay').classList.remove('hidden');
+            playHighScore();
+
+            setTimeout(() => {
+                const input = document.getElementById('player-name-input');
+                input.focus();
+                input.select();
+            }, 100);
+
+            document.getElementById('player-name-input').onkeydown = (e) => {
+                if (e.key === 'Enter') submitHighScore();
+            };
+        }
+
+        function submitHighScore() {
+            if (!pendingScore) return;
+
+            let name = document.getElementById('player-name-input').value.trim() || 'Anonymous';
+            lastPlayerName = name;
+            localStorage.setItem('bejeteled_lastPlayer', name);
+
+            const leaderboard = getLeaderboard(pendingScore.mode);
+            leaderboard.push({
+                name: name,
+                score: pendingScore.score,
+                date: new Date().toISOString()
+            });
+
+            leaderboard.sort((a, b) => b.score - a.score);
+            while (leaderboard.length > MAX_LEADERBOARD_ENTRIES) leaderboard.pop();
+            saveLeaderboard(pendingScore.mode, leaderboard);
+
+            document.getElementById('name-input-overlay').classList.add('hidden');
+            document.getElementById('game-over').classList.remove('hidden');
+            pendingScore = null;
+        }
+
+        function skipHighScore() {
+            document.getElementById('name-input-overlay').classList.add('hidden');
+            document.getElementById('game-over').classList.remove('hidden');
+            playGameOver();
+            pendingScore = null;
+        }
+
+        function showLeaderboard() {
+            currentLeaderboardTab = gameMode;
+            updateLeaderboardTabs();
+            renderLeaderboard();
+            document.getElementById('leaderboard-overlay').classList.remove('hidden');
+            haptic('light');
+        }
+
+        function hideLeaderboard() {
+            document.getElementById('leaderboard-overlay').classList.add('hidden');
+        }
+
+        function switchLeaderboardTab(mode) {
+            currentLeaderboardTab = mode;
+            updateLeaderboardTabs();
+            renderLeaderboard();
+            haptic('light');
+        }
+
+        function updateLeaderboardTabs() {
+            document.getElementById('tab-classic').classList.toggle('active', currentLeaderboardTab === 'classic');
+            document.getElementById('tab-blitz').classList.toggle('active', currentLeaderboardTab === 'blitz');
+        }
+
+        function renderLeaderboard() {
+            const leaderboard = getLeaderboard(currentLeaderboardTab);
+            const list = document.getElementById('leaderboard-list');
+
+            if (leaderboard.length === 0) {
+                list.innerHTML = '<div class="leaderboard-empty">No scores yet. Be the first!</div>';
+                return;
+            }
+
+            list.innerHTML = leaderboard.map((entry, index) => `
+                <div class="leaderboard-entry">
+                    <div class="leaderboard-rank">#${index + 1}</div>
+                    <div class="leaderboard-name">${escapeHtml(entry.name)}</div>
+                    <div class="leaderboard-score">${entry.score.toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== ACHIEVEMENTS ====================
+        const ACHIEVEMENTS = [
+            { id: 'first_match', name: 'First Spark', icon: '✨', desc: 'Make your first match', stat: 'totalMatches', target: 1 },
+            { id: 'matches_100', name: 'Gem Collector', icon: '💎', desc: 'Match 100 gems', stat: 'totalGemsMatched', target: 100 },
+            { id: 'matches_500', name: 'Gem Hunter', icon: '🏆', desc: 'Match 500 gems', stat: 'totalGemsMatched', target: 500 },
+            { id: 'cascade_3', name: 'Chain Starter', icon: '⛓️', desc: 'Get a 3x cascade', stat: 'maxCascade', target: 3 },
+            { id: 'cascade_5', name: 'Cascade King', icon: '🌊', desc: 'Get a 5x cascade', stat: 'maxCascade', target: 5 },
+            { id: 'flame_1', name: 'Flame Starter', icon: '🔶', desc: 'Create a Flame gem', stat: 'flameGemsCreated', target: 1 },
+            { id: 'star_1', name: 'Star Power', icon: '⭐', desc: 'Create a Star gem', stat: 'starGemsCreated', target: 1 },
+            { id: 'hyper_1', name: 'Hyper Cube', icon: '🔷', desc: 'Create a Hypercube', stat: 'hypercubesCreated', target: 1 },
+            { id: 'score_5k', name: 'Skilled', icon: '🥈', desc: 'Score 5,000 points', stat: 'highestScore', target: 5000 },
+            { id: 'score_10k', name: 'Expert', icon: '🥇', desc: 'Score 10,000 points', stat: 'highestScore', target: 10000 },
+            { id: 'score_25k', name: 'Champion', icon: '🏅', desc: 'Score 25,000 points', stat: 'highestScore', target: 25000 },
+            { id: 'blitz_5k', name: 'Blitz Pro', icon: '🚀', desc: 'Score 5,000 in Blitz', stat: 'highestBlitzScore', target: 5000 },
+            { id: 'games_10', name: 'Regular', icon: '🎮', desc: 'Play 10 games', stat: 'gamesPlayed', target: 10 },
+            { id: 'level_5', name: 'Climber', icon: '📈', desc: 'Reach level 5', stat: 'highestLevel', target: 5 },
+            { id: 'level_10', name: 'Mountaineer', icon: '🏔️', desc: 'Reach level 10', stat: 'highestLevel', target: 10 }
+        ];
+
+        let gameStats = {
+            totalMatches: 0,
+            totalGemsMatched: 0,
+            maxCascade: 0,
+            flameGemsCreated: 0,
+            starGemsCreated: 0,
+            hypercubesCreated: 0,
+            highestScore: 0,
+            highestBlitzScore: 0,
+            gamesPlayed: 0,
+            highestLevel: 1
+        };
+
+        let unlockedAchievements = [];
+
+        function loadStats() {
+            const saved = localStorage.getItem('bejeteled_stats');
+            if (saved) gameStats = { ...gameStats, ...JSON.parse(saved) };
+            const savedAchievements = localStorage.getItem('bejeteled_achievements');
+            if (savedAchievements) unlockedAchievements = JSON.parse(savedAchievements);
+        }
+
+        function saveStats() {
+            localStorage.setItem('bejeteled_stats', JSON.stringify(gameStats));
+            localStorage.setItem('bejeteled_achievements', JSON.stringify(unlockedAchievements));
+        }
+
+        function updateStat(stat, value, isMax = false) {
+            if (isMax) {
+                if (value > gameStats[stat]) gameStats[stat] = value;
+            } else {
+                gameStats[stat] += value;
+            }
+            saveStats();
+            checkAchievements();
+        }
+
+        function checkAchievements() {
+            ACHIEVEMENTS.forEach(achievement => {
+                if (unlockedAchievements.includes(achievement.id)) return;
+                if (gameStats[achievement.stat] >= achievement.target) {
+                    unlockAchievement(achievement);
+                }
+            });
+        }
+
+        function unlockAchievement(achievement) {
+            if (unlockedAchievements.includes(achievement.id)) return;
+            unlockedAchievements.push(achievement.id);
+            saveStats();
+            showAchievementPopup(achievement);
+            playAchievement();
+            haptic('success');
+        }
+
+        function showAchievementPopup(achievement) {
+            const existing = document.querySelector('.achievement-popup');
+            if (existing) existing.remove();
+
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.innerHTML = `
+                <div class="achievement-popup-icon">${achievement.icon}</div>
+                <div>
+                    <div class="achievement-popup-title">Achievement Unlocked!</div>
+                    <div class="achievement-popup-name">${achievement.name}</div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        function showAchievements() {
+            renderAchievementsStats();
+            renderAchievementsGrid();
+            document.getElementById('achievements-overlay').classList.remove('hidden');
+            haptic('light');
+        }
+
+        function hideAchievements() {
+            document.getElementById('achievements-overlay').classList.add('hidden');
+        }
+
+        function renderAchievementsStats() {
+            document.getElementById('achievements-stats').innerHTML = `
+                <div class="stat-item"><div class="stat-value">${gameStats.gamesPlayed}</div><div class="stat-label">Games</div></div>
+                <div class="stat-item"><div class="stat-value">${gameStats.totalGemsMatched}</div><div class="stat-label">Gems</div></div>
+                <div class="stat-item"><div class="stat-value">${gameStats.highestScore.toLocaleString()}</div><div class="stat-label">Best</div></div>
+                <div class="stat-item"><div class="stat-value">${gameStats.maxCascade}x</div><div class="stat-label">Combo</div></div>
+            `;
+            document.getElementById('achievements-progress').textContent =
+                `${unlockedAchievements.length} / ${ACHIEVEMENTS.length} Achievements Unlocked`;
+        }
+
+        function renderAchievementsGrid() {
+            document.getElementById('achievements-grid').innerHTML = ACHIEVEMENTS.map(a => `
+                <div class="achievement-badge ${unlockedAchievements.includes(a.id) ? 'unlocked' : 'locked'}">
+                    <div class="badge-icon">${a.icon}</div>
+                    <div class="badge-name">${a.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== UPDATE GAME FUNCTIONS ====================
+        // Override gameOver to check high scores
+        function gameOver(title = 'NO MORE MOVES!') {
+            haptic('error');
+            document.getElementById('game-over-title').textContent = title;
+            document.getElementById('final-score').textContent = score;
+            updateStat('gamesPlayed', 1);
+            checkHighScore(score, gameMode);
+        }
+
+        // Start game
+        loadStats();
+        updateSoundIcon();
+        init();
+    </script>
+</body>
+</html>
