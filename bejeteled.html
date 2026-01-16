@@ -13,6 +13,49 @@
             --tg-theme-button-color: #667eea;
             --tg-theme-button-text-color: #ffffff;
             --tg-theme-secondary-bg-color: #1a1a3a;
+            --timer-color: #4ecdc4;
+            --timer-warning: #f7b733;
+            --timer-critical: #fc4a1a;
+            --score-color: #ffd700;
+            --score-glow: rgba(255, 215, 0, 0.8);
+            --cascade-color: #ff6b6b;
+            --cascade-glow: rgba(255, 107, 107, 0.8);
+            --time-bonus-color: #4ecdc4;
+            --time-bonus-glow: rgba(78, 205, 196, 0.8);
+            --board-bg: rgba(0, 0, 0, 0.3);
+            --cell-bg: rgba(0, 0, 0, 0.2);
+            --stars-opacity: 0.5;
+            --leaderboard-score: #4ecdc4;
+            --stat-value-color: #4ecdc4;
+            --game-over-title: #ffd700;
+            --border-color: #3a3a5a;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --tg-theme-bg-color: #f0f2f5;
+                --tg-theme-text-color: #1a1a2e;
+                --tg-theme-hint-color: #666677;
+                --tg-theme-button-color: #5865f2;
+                --tg-theme-button-text-color: #ffffff;
+                --tg-theme-secondary-bg-color: #ffffff;
+                --timer-color: #0d9488;
+                --timer-warning: #d97706;
+                --timer-critical: #dc2626;
+                --score-color: #b8860b;
+                --score-glow: rgba(184, 134, 11, 0.6);
+                --cascade-color: #dc2626;
+                --cascade-glow: rgba(220, 38, 38, 0.6);
+                --time-bonus-color: #0d9488;
+                --time-bonus-glow: rgba(13, 148, 136, 0.6);
+                --board-bg: rgba(0, 0, 0, 0.08);
+                --cell-bg: rgba(0, 0, 0, 0.05);
+                --stars-opacity: 0.15;
+                --leaderboard-score: #0d9488;
+                --stat-value-color: #0d9488;
+                --game-over-title: #b8860b;
+                --border-color: #d1d5db;
+            }
         }
 
         * {
@@ -47,7 +90,7 @@
                 radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.5), transparent);
             background-size: 200px 150px;
             animation: twinkle 4s ease-in-out infinite;
-            opacity: 0.5;
+            opacity: var(--stars-opacity);
         }
 
         @keyframes twinkle {
@@ -85,7 +128,7 @@
             font-size: 12px;
             background: var(--tg-theme-secondary-bg-color, #1a1a3a);
             color: var(--tg-theme-hint-color, #888);
-            border: 1px solid #3a3a5a;
+            border: 1px solid var(--border-color);
             border-radius: 16px;
             cursor: pointer;
             transition: all 0.2s;
@@ -99,7 +142,7 @@
 
         .timer-display {
             font-size: 24px;
-            color: #4ecdc4;
+            color: var(--timer-color);
             font-weight: bold;
             margin-bottom: 5px;
             display: none;
@@ -109,8 +152,8 @@
             display: block;
         }
 
-        .timer-display.warning { color: #f7b733; }
-        .timer-display.critical { color: #fc4a1a; animation: pulse 0.3s ease infinite; }
+        .timer-display.warning { color: var(--timer-warning); }
+        .timer-display.critical { color: var(--timer-critical); animation: pulse 0.3s ease infinite; }
 
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
@@ -131,13 +174,13 @@
 
         .timer-fill {
             height: 100%;
-            background: linear-gradient(90deg, #4ecdc4, #44a08d);
+            background: linear-gradient(90deg, var(--timer-color), #44a08d);
             border-radius: 3px;
             transition: width 0.1s linear;
         }
 
-        .timer-fill.warning { background: linear-gradient(90deg, #f7b733, #fc4a1a); }
-        .timer-fill.critical { background: linear-gradient(90deg, #fc4a1a, #cc0000); }
+        .timer-fill.warning { background: linear-gradient(90deg, var(--timer-warning), var(--timer-critical)); }
+        .timer-fill.critical { background: linear-gradient(90deg, var(--timer-critical), #cc0000); }
 
         .info-bar {
             display: flex;
@@ -154,7 +197,7 @@
 
         .info-item span {
             display: block;
-            color: #ffd700;
+            color: var(--score-color);
             font-size: 18px;
             font-weight: bold;
         }
@@ -172,7 +215,7 @@
             display: grid;
             grid-template-columns: repeat(8, 1fr);
             gap: 2px;
-            background: rgba(0,0,0,0.3);
+            background: var(--board-bg);
             padding: 4px;
             border-radius: 8px;
             width: min(calc(100vw - 50px), 340px);
@@ -184,7 +227,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.2);
+            background: var(--cell-bg);
             border-radius: 4px;
         }
 
@@ -307,7 +350,7 @@
             font-size: 13px;
             background: var(--tg-theme-secondary-bg-color, #2a2a4a);
             color: var(--tg-theme-text-color, #ddd);
-            border: 1px solid #3a3a5a;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
@@ -323,8 +366,8 @@
             pointer-events: none;
             font-size: 24px;
             font-weight: bold;
-            color: #ffd700;
-            text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+            color: var(--score-color);
+            text-shadow: 0 0 8px var(--score-glow);
             animation: scoreFloat 1s ease forwards;
             z-index: 100;
         }
@@ -339,8 +382,8 @@
             pointer-events: none;
             font-size: 20px;
             font-weight: bold;
-            color: #4ecdc4;
-            text-shadow: 0 0 8px rgba(78, 205, 196, 0.8);
+            color: var(--time-bonus-color);
+            text-shadow: 0 0 8px var(--time-bonus-glow);
             animation: timeBonusFloat 1s ease forwards;
             z-index: 100;
         }
@@ -355,8 +398,8 @@
             pointer-events: none;
             font-size: 28px;
             font-weight: bold;
-            color: #ff6b6b;
-            text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+            color: var(--cascade-color);
+            text-shadow: 0 0 10px var(--cascade-glow);
             animation: cascadeFloat 1.2s ease forwards;
             z-index: 100;
         }
@@ -391,7 +434,7 @@
 
         .game-over h2 {
             font-size: 28px;
-            color: #ffd700;
+            color: var(--game-over-title);
             margin-bottom: 15px;
         }
 
@@ -436,8 +479,8 @@
             transform: translate(-50%, -50%);
             font-size: 60px;
             font-weight: bold;
-            color: #ffd700;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            color: var(--score-color);
+            text-shadow: 0 0 20px var(--score-glow);
             animation: countdownPop 0.8s ease forwards;
             z-index: 150;
         }
@@ -509,7 +552,7 @@
         }
 
         .modal-content h2 {
-            color: #ffd700;
+            color: var(--game-over-title);
             text-align: center;
             margin-bottom: 15px;
             font-size: 22px;
@@ -527,7 +570,7 @@
             font-size: 12px;
             background: rgba(255,255,255,0.1);
             color: var(--tg-theme-hint-color, #888);
-            border: 1px solid #3a3a5a;
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             cursor: pointer;
         }
@@ -572,7 +615,7 @@
         }
 
         .leaderboard-score {
-            color: #4ecdc4;
+            color: var(--leaderboard-score);
             font-size: 16px;
             font-weight: bold;
         }
@@ -596,10 +639,10 @@
             width: 100%;
             padding: 12px;
             font-size: 16px;
-            background: rgba(0,0,0,0.3);
-            border: 2px solid #3a3a5a;
+            background: var(--board-bg);
+            border: 2px solid var(--border-color);
             border-radius: 8px;
-            color: white;
+            color: var(--tg-theme-text-color);
             text-align: center;
             margin-bottom: 15px;
         }
@@ -611,7 +654,7 @@
 
         .new-score-display {
             font-size: 32px;
-            color: #4ecdc4;
+            color: var(--leaderboard-score);
             font-weight: bold;
             text-align: center;
             margin-bottom: 15px;
@@ -674,7 +717,7 @@
         .stat-value {
             font-size: 18px;
             font-weight: bold;
-            color: #4ecdc4;
+            color: var(--stat-value-color);
         }
 
         .stat-label {
@@ -697,7 +740,7 @@
             left: 50%;
             transform: translateX(-50%);
             background: var(--tg-theme-secondary-bg-color, #1a1a3a);
-            border: 2px solid #ffd700;
+            border: 2px solid var(--score-color);
             border-radius: 10px;
             padding: 10px 15px;
             display: flex;
@@ -718,8 +761,8 @@
         }
 
         .achievement-popup-icon { font-size: 28px; }
-        .achievement-popup-title { color: #ffd700; font-size: 10px; text-transform: uppercase; }
-        .achievement-popup-name { color: white; font-size: 14px; font-weight: bold; }
+        .achievement-popup-title { color: var(--score-color); font-size: 10px; text-transform: uppercase; }
+        .achievement-popup-name { color: var(--tg-theme-text-color); font-size: 14px; font-weight: bold; }
 
         /* Sound toggle */
         .sound-toggle {
@@ -727,7 +770,7 @@
             top: 10px;
             right: 10px;
             background: var(--tg-theme-secondary-bg-color, #2a2a4a);
-            border: 1px solid #3a3a5a;
+            border: 1px solid var(--border-color);
             border-radius: 50%;
             width: 36px;
             height: 36px;
@@ -836,13 +879,63 @@
 
             // Apply Telegram theme
             if (tg.themeParams) {
+                const isDark = isColorDark(tg.themeParams.bg_color || '#0a0a1a');
+
                 document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#0a0a1a');
                 document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#ffffff');
                 document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#aaaaaa');
                 document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#667eea');
                 document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
                 document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#1a1a3a');
+
+                // Apply theme-appropriate accent colors
+                if (isDark) {
+                    document.documentElement.style.setProperty('--timer-color', '#4ecdc4');
+                    document.documentElement.style.setProperty('--timer-warning', '#f7b733');
+                    document.documentElement.style.setProperty('--timer-critical', '#fc4a1a');
+                    document.documentElement.style.setProperty('--score-color', '#ffd700');
+                    document.documentElement.style.setProperty('--score-glow', 'rgba(255, 215, 0, 0.8)');
+                    document.documentElement.style.setProperty('--cascade-color', '#ff6b6b');
+                    document.documentElement.style.setProperty('--cascade-glow', 'rgba(255, 107, 107, 0.8)');
+                    document.documentElement.style.setProperty('--time-bonus-color', '#4ecdc4');
+                    document.documentElement.style.setProperty('--time-bonus-glow', 'rgba(78, 205, 196, 0.8)');
+                    document.documentElement.style.setProperty('--board-bg', 'rgba(0, 0, 0, 0.3)');
+                    document.documentElement.style.setProperty('--cell-bg', 'rgba(0, 0, 0, 0.2)');
+                    document.documentElement.style.setProperty('--stars-opacity', '0.5');
+                    document.documentElement.style.setProperty('--leaderboard-score', '#4ecdc4');
+                    document.documentElement.style.setProperty('--stat-value-color', '#4ecdc4');
+                    document.documentElement.style.setProperty('--game-over-title', '#ffd700');
+                    document.documentElement.style.setProperty('--border-color', '#3a3a5a');
+                } else {
+                    document.documentElement.style.setProperty('--timer-color', '#0d9488');
+                    document.documentElement.style.setProperty('--timer-warning', '#d97706');
+                    document.documentElement.style.setProperty('--timer-critical', '#dc2626');
+                    document.documentElement.style.setProperty('--score-color', '#b8860b');
+                    document.documentElement.style.setProperty('--score-glow', 'rgba(184, 134, 11, 0.6)');
+                    document.documentElement.style.setProperty('--cascade-color', '#dc2626');
+                    document.documentElement.style.setProperty('--cascade-glow', 'rgba(220, 38, 38, 0.6)');
+                    document.documentElement.style.setProperty('--time-bonus-color', '#0d9488');
+                    document.documentElement.style.setProperty('--time-bonus-glow', 'rgba(13, 148, 136, 0.6)');
+                    document.documentElement.style.setProperty('--board-bg', 'rgba(0, 0, 0, 0.08)');
+                    document.documentElement.style.setProperty('--cell-bg', 'rgba(0, 0, 0, 0.05)');
+                    document.documentElement.style.setProperty('--stars-opacity', '0.15');
+                    document.documentElement.style.setProperty('--leaderboard-score', '#0d9488');
+                    document.documentElement.style.setProperty('--stat-value-color', '#0d9488');
+                    document.documentElement.style.setProperty('--game-over-title', '#b8860b');
+                    document.documentElement.style.setProperty('--border-color', '#d1d5db');
+                }
             }
+        }
+
+        // Helper to determine if a color is dark
+        function isColorDark(hexColor) {
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            // Using relative luminance formula
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance < 0.5;
         }
 
         // Haptic feedback helper
