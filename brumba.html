@@ -19,8 +19,8 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #1a1a2e);
-            color: var(--tg-theme-text-color, #ffffff);
+            background: #2a2a2a;
+            color: #ffffff;
             touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
@@ -33,12 +33,14 @@
             left: 0;
             width: 100%;
             height: 100%;
+            background: #C4A882;
         }
 
         #gameCanvas {
             width: 100%;
             height: 100%;
             display: block;
+            background: #C4A882;
         }
 
         #ui {
@@ -60,13 +62,14 @@
         }
 
         .overlay {
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             border-radius: 16px;
             padding: 30px 25px;
             text-align: center;
             pointer-events: auto;
             max-width: 300px;
             width: 100%;
+            color: #ffffff;
         }
 
         h1 {
@@ -77,7 +80,7 @@
 
         .subtitle {
             font-size: 14px;
-            opacity: 0.8;
+            color: rgba(255, 255, 255, 0.85);
             margin-bottom: 25px;
             line-height: 1.4;
         }
@@ -86,6 +89,7 @@
             font-size: 24px;
             margin: 15px 0;
             font-weight: bold;
+            color: #ffffff;
         }
 
         .high-score {
@@ -96,7 +100,7 @@
 
         .tap-hint {
             font-size: 18px;
-            opacity: 0.9;
+            color: rgba(255, 255, 255, 0.9);
             animation: pulse 1.5s ease-in-out infinite;
             margin-top: 10px;
         }
@@ -189,6 +193,12 @@
         const JUMP_FORCE = -16;
         const GAME_SPEED_INITIAL = 5;
         const GAME_SPEED_INCREMENT = 0.002;
+        const REFERENCE_WIDTH = 500; // Reference screen width for consistent speed feel
+
+        // Get speed multiplier based on screen width (wider = faster to feel same)
+        function getSpeedMultiplier() {
+            return CANVAS_WIDTH / REFERENCE_WIDTH;
+        }
 
         // Game state
         let gameState = 'start';
@@ -397,11 +407,14 @@
                 speedUpNotification--;
             }
 
+            // Calculate actual speed based on screen width
+            const actualSpeed = gameSpeed * getSpeedMultiplier();
+
             // Update floor offset
-            floorOffset = (floorOffset + gameSpeed) % 40;
+            floorOffset = (floorOffset + actualSpeed) % 40;
 
             // Rotate roomba wheels
-            roomba.wheelAngle += gameSpeed * 0.1;
+            roomba.wheelAngle += actualSpeed * 0.1;
 
             // Update Bruno physics
             bruno.vy += GRAVITY * SCALE * 0.5;
@@ -425,7 +438,7 @@
             }
 
             obstacles.forEach(obs => {
-                obs.x -= gameSpeed;
+                obs.x -= actualSpeed;
             });
 
             obstacles = obstacles.filter(obs => obs.x + obs.width > -50);
@@ -479,7 +492,7 @@
                 'window', 'clock', 'fireplace', 'cabinet'
             ];
             backgroundItems.forEach(item => {
-                item.x -= gameSpeed * 0.5;
+                item.x -= actualSpeed * 0.5;
                 if (item.x < -150) {
                     item.x = CANVAS_WIDTH + 100 + Math.random() * 50;
                     item.type = bgTypes[Math.floor(Math.random() * bgTypes.length)];
@@ -489,7 +502,7 @@
 
             // Update dust particles
             dustParticles.forEach(p => {
-                p.x += p.vx - gameSpeed * 0.5;
+                p.x += p.vx - actualSpeed * 0.5;
                 p.y += p.vy;
                 p.vy += 0.1;
                 p.life--;
