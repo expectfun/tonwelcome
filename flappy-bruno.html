@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Flappy Bruno</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #4EC0CA;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            max-height: 700px;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(78, 192, 202, 0.9);
+            z-index: 10;
+        }
+
+        #gameOverScreen {
+            display: none;
+        }
+
+        .title {
+            font-size: 24px;
+            color: #FFF;
+            text-shadow: 3px 3px 0 #543847;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #FFF;
+            text-shadow: 2px 2px 0 #543847;
+            margin-bottom: 40px;
+        }
+
+        .score-display {
+            font-size: 32px;
+            color: #FFF;
+            text-shadow: 3px 3px 0 #543847;
+            margin: 20px 0;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #E07F3A;
+            color: #FFF;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-shadow: 2px 2px 0 #543847;
+            box-shadow: 0 4px 0 #8B4513;
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #8B4513;
+        }
+
+        #currentScore {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            color: #FFF;
+            text-shadow: 3px 3px 0 #543847;
+            z-index: 5;
+            font-family: 'Press Start 2P', monospace;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="currentScore" style="display: none;">0</div>
+
+        <div id="startScreen">
+            <div class="title">FLAPPY<br>BRUNO</div>
+            <div class="subtitle">Tap to flap!</div>
+            <button class="btn" id="startBtn">START</button>
+        </div>
+
+        <div id="gameOverScreen">
+            <div class="title">GAME OVER</div>
+            <div class="subtitle">Score</div>
+            <div class="score-display" id="finalScore">0</div>
+            <button class="btn" id="restartBtn">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const currentScoreEl = document.getElementById('currentScore');
+        const finalScoreEl = document.getElementById('finalScore');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+
+        // Game constants
+        const GRAVITY = 0.4;
+        const FLAP_FORCE = -7;
+        const PIPE_SPEED = 2.5;
+        const PIPE_GAP = 150;
+        const PIPE_WIDTH = 60;
+        const PIPE_SPAWN_INTERVAL = 1800;
+
+        // Game state
+        let gameState = 'start';
+        let score = 0;
+        let highScore = localStorage.getItem('flappyBrunoHighScore') || 0;
+
+        // Bruno the cat
+        let bruno = {
+            x: 80,
+            y: 0,
+            width: 45,
+            height: 40,
+            velocity: 0,
+            flapFrame: 0,
+            flapTimer: 0
+        };
+
+        // Pipes
+        let pipes = [];
+        let lastPipeSpawn = 0;
+
+        // Ground
+        let groundOffset = 0;
+
+        // Set canvas size
+        function resizeCanvas() {
+            const container = document.getElementById('gameContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            bruno.y = canvas.height / 2;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Draw pixel art Bruno
+        function drawBruno(x, y, flapFrame) {
+            ctx.save();
+            ctx.translate(x, y);
+
+            const scale = 2.5;
+            ctx.scale(scale, scale);
+
+            // Colors
+            const orange = '#E07F3A';
+            const darkOrange = '#C56A2D';
+            const lightOrange = '#F5A853';
+            const white = '#FFF8E7';
+            const green = '#7CB342';
+            const darkGreen = '#558B2F';
+            const pink = '#FFB6C1';
+            const black = '#2D2D2D';
+
+            // Body (fluffy oval)
+            ctx.fillStyle = orange;
+            ctx.beginPath();
+            ctx.ellipse(8, 8, 7, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fluffy chest
+            ctx.fillStyle = lightOrange;
+            ctx.beginPath();
+            ctx.ellipse(5, 9, 3, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = orange;
+            ctx.beginPath();
+            ctx.arc(6, 3, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Fluffy cheeks
+            ctx.fillStyle = lightOrange;
+            ctx.beginPath();
+            ctx.arc(3, 5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(9, 5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ears
+            ctx.fillStyle = orange;
+            ctx.beginPath();
+            ctx.moveTo(1, 1);
+            ctx.lineTo(3, -3);
+            ctx.lineTo(5, 1);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(7, 1);
+            ctx.lineTo(9, -3);
+            ctx.lineTo(11, 1);
+            ctx.fill();
+
+            // Inner ears
+            ctx.fillStyle = pink;
+            ctx.beginPath();
+            ctx.moveTo(2, 0);
+            ctx.lineTo(3, -2);
+            ctx.lineTo(4, 0);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(8, 0);
+            ctx.lineTo(9, -2);
+            ctx.lineTo(10, 0);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = white;
+            ctx.beginPath();
+            ctx.ellipse(4, 3, 1.5, 1.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(8, 3, 1.5, 1.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupils (green like Bruno's)
+            ctx.fillStyle = green;
+            ctx.beginPath();
+            ctx.arc(4.3, 3.2, 1, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(8.3, 3.2, 1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupil highlights
+            ctx.fillStyle = darkGreen;
+            ctx.beginPath();
+            ctx.arc(4.5, 3.4, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(8.5, 3.4, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eye shine
+            ctx.fillStyle = white;
+            ctx.beginPath();
+            ctx.arc(3.8, 2.5, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(7.8, 2.5, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Nose
+            ctx.fillStyle = pink;
+            ctx.beginPath();
+            ctx.moveTo(6, 5);
+            ctx.lineTo(5, 6);
+            ctx.lineTo(7, 6);
+            ctx.closePath();
+            ctx.fill();
+
+            // Mouth
+            ctx.strokeStyle = darkOrange;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(6, 6);
+            ctx.lineTo(6, 7);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(5, 7, 1, 0, Math.PI, true);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(7, 7, 1, 0, Math.PI, true);
+            ctx.stroke();
+
+            // Front paws (animated)
+            const pawOffset = flapFrame === 1 ? -3 : (flapFrame === 2 ? -1 : 1);
+
+            // Left paw
+            ctx.fillStyle = orange;
+            ctx.beginPath();
+            ctx.ellipse(2, 12 + pawOffset, 2.5, 2, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Right paw
+            ctx.beginPath();
+            ctx.ellipse(14, 12 + pawOffset, 2.5, 2, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Paw pads
+            ctx.fillStyle = pink;
+            ctx.beginPath();
+            ctx.arc(2, 13 + pawOffset, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(14, 13 + pawOffset, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tail
+            ctx.fillStyle = orange;
+            ctx.beginPath();
+            ctx.moveTo(15, 6);
+            ctx.quadraticCurveTo(20, 4, 18, 0);
+            ctx.quadraticCurveTo(16, 2, 14, 8);
+            ctx.fill();
+
+            // Fluffy tail tip
+            ctx.fillStyle = lightOrange;
+            ctx.beginPath();
+            ctx.arc(18, 1, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Draw pipe
+        function drawPipe(x, gapY) {
+            const pipeColor = '#73BF2E';
+            const pipeHighlight = '#8CD43E';
+            const pipeShadow = '#558B2F';
+            const capHeight = 30;
+            const capOverhang = 8;
+
+            // Top pipe
+            ctx.fillStyle = pipeColor;
+            ctx.fillRect(x, 0, PIPE_WIDTH, gapY - PIPE_GAP / 2);
+
+            // Top pipe highlight
+            ctx.fillStyle = pipeHighlight;
+            ctx.fillRect(x + 5, 0, 10, gapY - PIPE_GAP / 2);
+
+            // Top pipe shadow
+            ctx.fillStyle = pipeShadow;
+            ctx.fillRect(x + PIPE_WIDTH - 10, 0, 10, gapY - PIPE_GAP / 2);
+
+            // Top pipe cap
+            ctx.fillStyle = pipeColor;
+            ctx.fillRect(x - capOverhang, gapY - PIPE_GAP / 2 - capHeight, PIPE_WIDTH + capOverhang * 2, capHeight);
+
+            // Top cap highlight
+            ctx.fillStyle = pipeHighlight;
+            ctx.fillRect(x - capOverhang + 5, gapY - PIPE_GAP / 2 - capHeight, 10, capHeight);
+
+            // Top cap shadow
+            ctx.fillStyle = pipeShadow;
+            ctx.fillRect(x + PIPE_WIDTH + capOverhang - 10, gapY - PIPE_GAP / 2 - capHeight, 10, capHeight);
+
+            // Bottom pipe
+            const bottomPipeTop = gapY + PIPE_GAP / 2;
+            const groundY = canvas.height - 80;
+
+            ctx.fillStyle = pipeColor;
+            ctx.fillRect(x, bottomPipeTop + capHeight, PIPE_WIDTH, groundY - bottomPipeTop - capHeight);
+
+            // Bottom pipe highlight
+            ctx.fillStyle = pipeHighlight;
+            ctx.fillRect(x + 5, bottomPipeTop + capHeight, 10, groundY - bottomPipeTop - capHeight);
+
+            // Bottom pipe shadow
+            ctx.fillStyle = pipeShadow;
+            ctx.fillRect(x + PIPE_WIDTH - 10, bottomPipeTop + capHeight, 10, groundY - bottomPipeTop - capHeight);
+
+            // Bottom pipe cap
+            ctx.fillStyle = pipeColor;
+            ctx.fillRect(x - capOverhang, bottomPipeTop, PIPE_WIDTH + capOverhang * 2, capHeight);
+
+            // Bottom cap highlight
+            ctx.fillStyle = pipeHighlight;
+            ctx.fillRect(x - capOverhang + 5, bottomPipeTop, 10, capHeight);
+
+            // Bottom cap shadow
+            ctx.fillStyle = pipeShadow;
+            ctx.fillRect(x + PIPE_WIDTH + capOverhang - 10, bottomPipeTop, 10, capHeight);
+        }
+
+        // Draw ground
+        function drawGround() {
+            const groundY = canvas.height - 80;
+            const groundHeight = 80;
+
+            // Main ground
+            ctx.fillStyle = '#DED895';
+            ctx.fillRect(0, groundY, canvas.width, groundHeight);
+
+            // Grass top
+            ctx.fillStyle = '#73BF2E';
+            ctx.fillRect(0, groundY, canvas.width, 15);
+
+            // Ground pattern
+            ctx.fillStyle = '#C9B857';
+            for (let i = -groundOffset % 40; i < canvas.width; i += 40) {
+                ctx.fillRect(i, groundY + 25, 20, 10);
+                ctx.fillRect(i + 20, groundY + 45, 20, 10);
+            }
+        }
+
+        // Draw background
+        function drawBackground() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#4EC0CA');
+            gradient.addColorStop(0.7, '#87CEEB');
+            gradient.addColorStop(1, '#B0E0E6');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            drawCloud(50 - (groundOffset * 0.2) % (canvas.width + 100), 80);
+            drawCloud(200 - (groundOffset * 0.2) % (canvas.width + 100), 120);
+            drawCloud(350 - (groundOffset * 0.2) % (canvas.width + 100), 60);
+        }
+
+        function drawCloud(x, y) {
+            ctx.beginPath();
+            ctx.arc(x, y, 25, 0, Math.PI * 2);
+            ctx.arc(x + 25, y - 10, 30, 0, Math.PI * 2);
+            ctx.arc(x + 50, y, 25, 0, Math.PI * 2);
+            ctx.arc(x + 25, y + 5, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Spawn pipe
+        function spawnPipe() {
+            const minGapY = 120;
+            const maxGapY = canvas.height - 80 - 120;
+            const gapY = Math.random() * (maxGapY - minGapY) + minGapY;
+
+            pipes.push({
+                x: canvas.width,
+                gapY: gapY,
+                scored: false
+            });
+        }
+
+        // Check collision
+        function checkCollision() {
+            const groundY = canvas.height - 80;
+
+            // Ground collision
+            if (bruno.y + bruno.height / 2 > groundY) {
+                return true;
+            }
+
+            // Ceiling collision
+            if (bruno.y - bruno.height / 2 < 0) {
+                return true;
+            }
+
+            // Pipe collision
+            const brunoLeft = bruno.x - bruno.width / 2 + 10;
+            const brunoRight = bruno.x + bruno.width / 2 - 10;
+            const brunoTop = bruno.y - bruno.height / 2 + 5;
+            const brunoBottom = bruno.y + bruno.height / 2 - 5;
+
+            for (const pipe of pipes) {
+                const pipeLeft = pipe.x - 8;
+                const pipeRight = pipe.x + PIPE_WIDTH + 8;
+                const gapTop = pipe.gapY - PIPE_GAP / 2;
+                const gapBottom = pipe.gapY + PIPE_GAP / 2;
+
+                if (brunoRight > pipeLeft && brunoLeft < pipeRight) {
+                    if (brunoTop < gapTop || brunoBottom > gapBottom) {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // Flap
+        function flap() {
+            if (gameState === 'playing') {
+                bruno.velocity = FLAP_FORCE;
+                bruno.flapFrame = 1;
+                bruno.flapTimer = 15;
+            }
+        }
+
+        // Start game
+        function startGame() {
+            gameState = 'playing';
+            score = 0;
+            bruno.y = canvas.height / 2;
+            bruno.velocity = 0;
+            pipes = [];
+            lastPipeSpawn = Date.now();
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            currentScoreEl.style.display = 'block';
+            currentScoreEl.textContent = '0';
+
+            // Spawn first pipe
+            setTimeout(spawnPipe, 1000);
+        }
+
+        // Game over
+        function gameOver() {
+            gameState = 'gameover';
+            currentScoreEl.style.display = 'none';
+            finalScoreEl.textContent = score;
+            gameOverScreen.style.display = 'flex';
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('flappyBrunoHighScore', highScore);
+            }
+        }
+
+        // Update game
+        function update() {
+            if (gameState !== 'playing') return;
+
+            // Update Bruno
+            bruno.velocity += GRAVITY;
+            bruno.y += bruno.velocity;
+
+            // Update flap animation
+            if (bruno.flapTimer > 0) {
+                bruno.flapTimer--;
+                if (bruno.flapTimer > 10) {
+                    bruno.flapFrame = 1;
+                } else if (bruno.flapTimer > 5) {
+                    bruno.flapFrame = 2;
+                } else {
+                    bruno.flapFrame = 0;
+                }
+            }
+
+            // Update pipes
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                pipes[i].x -= PIPE_SPEED;
+
+                // Score
+                if (!pipes[i].scored && pipes[i].x + PIPE_WIDTH < bruno.x) {
+                    pipes[i].scored = true;
+                    score++;
+                    currentScoreEl.textContent = score;
+                }
+
+                // Remove off-screen pipes
+                if (pipes[i].x + PIPE_WIDTH < -20) {
+                    pipes.splice(i, 1);
+                }
+            }
+
+            // Spawn new pipes
+            if (Date.now() - lastPipeSpawn > PIPE_SPAWN_INTERVAL) {
+                spawnPipe();
+                lastPipeSpawn = Date.now();
+            }
+
+            // Update ground offset
+            groundOffset += PIPE_SPEED;
+
+            // Check collision
+            if (checkCollision()) {
+                gameOver();
+            }
+        }
+
+        // Render
+        function render() {
+            drawBackground();
+
+            // Draw pipes
+            for (const pipe of pipes) {
+                drawPipe(pipe.x, pipe.gapY);
+            }
+
+            drawGround();
+
+            // Draw Bruno with rotation based on velocity
+            ctx.save();
+            ctx.translate(bruno.x, bruno.y);
+            const rotation = Math.min(Math.max(bruno.velocity * 3, -30), 90) * Math.PI / 180;
+            ctx.rotate(rotation);
+            ctx.translate(-bruno.x, -bruno.y);
+            drawBruno(bruno.x - 25, bruno.y - 25, bruno.flapFrame);
+            ctx.restore();
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+
+        // Touch/click to flap
+        canvas.addEventListener('click', flap);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            flap();
+        }, { passive: false });
+
+        // Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.key === ' ') {
+                e.preventDefault();
+                if (gameState === 'start') {
+                    startGame();
+                } else if (gameState === 'playing') {
+                    flap();
+                } else if (gameState === 'gameover') {
+                    startGame();
+                }
+            }
+        });
+
+        // Start game loop
+        gameLoop();
+    </script>
+</body>
+</html>
