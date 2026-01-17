@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bruno's Roomba Ride</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #1a1a2e);
+            color: var(--tg-theme-text-color, #ffffff);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            padding: 20px;
+        }
+
+        #ui.hidden {
+            display: none;
+        }
+
+        .overlay {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 16px;
+            padding: 30px 25px;
+            text-align: center;
+            pointer-events: auto;
+            max-width: 300px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 22px;
+            margin-bottom: 8px;
+            color: #ffd700;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 25px;
+            line-height: 1.4;
+        }
+
+        .score-display {
+            font-size: 24px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        .high-score {
+            font-size: 16px;
+            color: #ffd700;
+            margin-bottom: 25px;
+        }
+
+        .tap-hint {
+            font-size: 18px;
+            opacity: 0.9;
+            animation: pulse 1.5s ease-in-out infinite;
+            margin-top: 10px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.98); }
+        }
+
+        #scoreHUD {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+
+        #highScoreHUD {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 14px;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="scoreHUD"></div>
+        <div id="highScoreHUD"></div>
+        <div id="ui">
+            <div class="overlay" id="startScreen">
+                <h1>Bruno's Roomba Ride</h1>
+                <p class="subtitle">Bruno is cruising on his Roomba!<br>Tap to jump over chairs.<br>Stay low to pass under tables!</p>
+                <p class="tap-hint">Tap to Start</p>
+            </div>
+            <div class="overlay" id="gameOverScreen" style="display: none;">
+                <h1>Oops!</h1>
+                <p class="score-display"><span id="finalScore">0</span></p>
+                <p class="high-score">Best: <span id="highScoreDisplay">0</span></p>
+                <p class="tap-hint">Tap to Retry</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram Mini App initialization
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Responsive canvas sizing
+        let CANVAS_WIDTH, CANVAS_HEIGHT, SCALE;
+        let GROUND_Y, ROOMBA_Y;
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            CANVAS_WIDTH = window.innerWidth;
+            CANVAS_HEIGHT = window.innerHeight;
+
+            canvas.width = CANVAS_WIDTH * dpr;
+            canvas.height = CANVAS_HEIGHT * dpr;
+            canvas.style.width = CANVAS_WIDTH + 'px';
+            canvas.style.height = CANVAS_HEIGHT + 'px';
+
+            ctx.scale(dpr, dpr);
+
+            // Recalculate positions based on screen size
+            GROUND_Y = CANVAS_HEIGHT - 80;
+            ROOMBA_Y = GROUND_Y - 25;
+            SCALE = Math.min(CANVAS_WIDTH / 375, 1.5); // Scale based on iPhone width
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Game constants
+        const GRAVITY = 0.8;
+        const JUMP_FORCE = -16;
+        const GAME_SPEED_INITIAL = 5;
+        const GAME_SPEED_INCREMENT = 0.002;
+
+        // Game state
+        let gameState = 'start';
+        let score = 0;
+        let highScore = loadHighScore();
+        let gameSpeed = GAME_SPEED_INITIAL;
+        let speedLevel = 1;
+        let speedUpNotification = 0; // Timer for showing "Speed Up!" message
+
+        // Roomba
+        const roomba = {
+            width: 90,
+            height: 25,
+            wheelAngle: 0
+        };
+
+        // Bruno the cat (sits on roomba)
+        const bruno = {
+            width: 70,
+            height: 70,
+            y: 0,
+            vy: 0,
+            isJumping: false
+        };
+
+        // Load Bruno sprite
+        const brunoImg = new Image();
+        brunoImg.src = 'brumba.png';
+
+        // Floor tiles for scrolling effect
+        let floorOffset = 0;
+
+        // Two furniture types:
+        // Chair - lower, Bruno must JUMP over
+        // Table - higher, Bruno must STAY LOW (pass under on Roomba)
+        let obstacles = [];
+        let obstacleTimer = 0;
+        let minObstacleInterval = 100;
+        let lastObstacleType = null;
+
+        // Background furniture (decorative)
+        let backgroundItems = [];
+
+        // Dust particles from roomba
+        let dustParticles = [];
+
+        // Get Bruno's X position (fixed, left side of screen)
+        function getBrunoX() {
+            return 60 * SCALE;
+        }
+
+        // Get roomba center X
+        function getRoombaX() {
+            return getBrunoX() + (bruno.width * SCALE) / 2 - (roomba.width * SCALE) / 2;
+        }
+
+        // Initialize game
+        function initGame() {
+            bruno.y = ROOMBA_Y - roomba.height - bruno.height * SCALE;
+            bruno.vy = 0;
+            bruno.isJumping = false;
+
+            score = 0;
+            gameSpeed = GAME_SPEED_INITIAL;
+            speedLevel = 1;
+            speedUpNotification = 0;
+
+            obstacles = [];
+            obstacleTimer = 0;
+            minObstacleInterval = 100;
+            lastObstacleType = null;
+
+            dustParticles = [];
+
+            // Initialize background furniture - more items for richer scene
+            backgroundItems = [];
+            for (let i = 0; i < 6; i++) {
+                backgroundItems.push(createBackgroundItem(CANVAS_WIDTH * 0.15 + i * CANVAS_WIDTH * 0.3));
+            }
+        }
+
+        function createBackgroundItem(x) {
+            const types = [
+                'sofa', 'lamp', 'plant', 'shelf',
+                'bookshelf', 'closet', 'fridge', 'tv',
+                'window', 'clock', 'fireplace', 'cabinet'
+            ];
+            return {
+                x: x,
+                type: types[Math.floor(Math.random() * types.length)],
+                shade: 0.25 + Math.random() * 0.2
+            };
+        }
+
+        // Handle input
+        function handleTap(e) {
+            if (e) e.preventDefault();
+
+            if (gameState === 'start') {
+                gameState = 'playing';
+                document.getElementById('ui').classList.add('hidden');
+                initGame();
+            } else if (gameState === 'playing') {
+                jump();
+            } else if (gameState === 'gameover') {
+                gameState = 'playing';
+                document.getElementById('gameOverScreen').style.display = 'none';
+                document.getElementById('ui').classList.add('hidden');
+                initGame();
+            }
+        }
+
+        function jump() {
+            if (!bruno.isJumping) {
+                bruno.vy = JUMP_FORCE * SCALE;
+                bruno.isJumping = true;
+                // Add dust burst
+                for (let i = 0; i < 5; i++) {
+                    dustParticles.push({
+                        x: getRoombaX() + roomba.width * SCALE / 2,
+                        y: ROOMBA_Y,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: -Math.random() * 2,
+                        life: 30,
+                        size: 3 + Math.random() * 4
+                    });
+                }
+            }
+        }
+
+        // Event listeners
+        canvas.addEventListener('click', handleTap);
+        canvas.addEventListener('touchstart', handleTap, { passive: false });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleTap();
+            }
+        });
+
+        // Spawn obstacles - only chairs and tables
+        function spawnObstacle() {
+            // Alternate between chair and table with some randomness
+            let isTable;
+            if (lastObstacleType === 'chair') {
+                isTable = Math.random() < 0.6; // More likely table after chair
+            } else if (lastObstacleType === 'table') {
+                isTable = Math.random() < 0.35; // Less likely another table
+            } else {
+                isTable = Math.random() < 0.5; // 50/50 at start
+            }
+
+            if (isTable) {
+                // Table - tall legs, Bruno passes UNDER when sitting (don't jump!)
+                // If Bruno jumps, he hits the tabletop
+                const tableWidth = (70 + Math.random() * 30) * SCALE;
+                const tableTopHeight = 15 * SCALE;
+                const legHeight = 135 * SCALE; // Tall enough for Roomba + sitting Bruno to pass under
+
+                obstacles.push({
+                    x: CANVAS_WIDTH + 50,
+                    y: GROUND_Y - legHeight - tableTopHeight,
+                    width: tableWidth,
+                    height: tableTopHeight,
+                    legHeight: legHeight,
+                    type: 'table'
+                });
+                lastObstacleType = 'table';
+            } else {
+                // Chair - shorter, Bruno must JUMP over
+                const chairWidth = (50 + Math.random() * 20) * SCALE;
+                const seatHeight = 15 * SCALE;
+                const legHeight = 35 * SCALE; // Short - blocks Bruno on Roomba
+                const backHeight = 40 * SCALE;
+
+                obstacles.push({
+                    x: CANVAS_WIDTH + 50,
+                    y: GROUND_Y - legHeight - seatHeight,
+                    width: chairWidth,
+                    height: seatHeight,
+                    legHeight: legHeight,
+                    backHeight: backHeight,
+                    type: 'chair'
+                });
+                lastObstacleType = 'chair';
+            }
+        }
+
+        // Update game state
+        function update() {
+            if (gameState !== 'playing') return;
+
+            // Update score
+            score += 1;
+
+            // Check for speed milestone (every 1000 points)
+            const newSpeedLevel = Math.floor(score / 1000) + 1;
+            if (newSpeedLevel > speedLevel) {
+                speedLevel = newSpeedLevel;
+                gameSpeed += 1; // Noticeable speed boost
+                speedUpNotification = 120; // Show notification for 2 seconds (60fps)
+            }
+
+            // Decrease notification timer
+            if (speedUpNotification > 0) {
+                speedUpNotification--;
+            }
+
+            // Update floor offset
+            floorOffset = (floorOffset + gameSpeed) % 40;
+
+            // Rotate roomba wheels
+            roomba.wheelAngle += gameSpeed * 0.1;
+
+            // Update Bruno physics
+            bruno.vy += GRAVITY * SCALE * 0.5;
+            bruno.y += bruno.vy;
+
+            // Ground collision (landing on roomba)
+            const groundLevel = ROOMBA_Y - roomba.height - bruno.height * SCALE;
+            if (bruno.y >= groundLevel) {
+                bruno.y = groundLevel;
+                bruno.vy = 0;
+                bruno.isJumping = false;
+            }
+
+            // Update obstacles - varied gaps for less repetitive gameplay
+            obstacleTimer++;
+            const interval = minObstacleInterval + Math.random() * 120 + Math.random() * 80;
+            if (obstacleTimer > interval) {
+                spawnObstacle();
+                obstacleTimer = 0;
+                minObstacleInterval = Math.max(70, minObstacleInterval - 0.2);
+            }
+
+            obstacles.forEach(obs => {
+                obs.x -= gameSpeed;
+            });
+
+            obstacles = obstacles.filter(obs => obs.x + obs.width > -50);
+
+            // Collision detection - only Bruno, Roomba passes under/through
+            const brunoX = getBrunoX();
+            const brunoBox = {
+                x: brunoX + 10 * SCALE,
+                y: bruno.y + 5 * SCALE,
+                width: bruno.width * SCALE - 20 * SCALE,
+                height: bruno.height * SCALE - 10 * SCALE
+            };
+
+            for (const obs of obstacles) {
+                let obsBox;
+
+                if (obs.type === 'chair') {
+                    // Chair: collision with seat + back (full height from back top to seat bottom)
+                    // Bruno must jump over the entire chair
+                    obsBox = {
+                        x: obs.x + 3,
+                        y: obs.y - obs.backHeight,
+                        width: obs.width - 6,
+                        height: obs.backHeight + obs.height + obs.legHeight
+                    };
+                } else if (obs.type === 'table') {
+                    // Table: collision only with table top (Bruno can pass under)
+                    obsBox = {
+                        x: obs.x + 3,
+                        y: obs.y,
+                        width: obs.width - 6,
+                        height: obs.height + 5
+                    };
+                }
+
+                // Check collision with Bruno
+                if (obsBox &&
+                    brunoBox.x < obsBox.x + obsBox.width &&
+                    brunoBox.x + brunoBox.width > obsBox.x &&
+                    brunoBox.y < obsBox.y + obsBox.height &&
+                    brunoBox.y + brunoBox.height > obsBox.y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Update background
+            const bgTypes = [
+                'sofa', 'lamp', 'plant', 'shelf',
+                'bookshelf', 'closet', 'fridge', 'tv',
+                'window', 'clock', 'fireplace', 'cabinet'
+            ];
+            backgroundItems.forEach(item => {
+                item.x -= gameSpeed * 0.5;
+                if (item.x < -150) {
+                    item.x = CANVAS_WIDTH + 100 + Math.random() * 50;
+                    item.type = bgTypes[Math.floor(Math.random() * bgTypes.length)];
+                    item.shade = 0.25 + Math.random() * 0.2;
+                }
+            });
+
+            // Update dust particles
+            dustParticles.forEach(p => {
+                p.x += p.vx - gameSpeed * 0.5;
+                p.y += p.vy;
+                p.vy += 0.1;
+                p.life--;
+            });
+            dustParticles = dustParticles.filter(p => p.life > 0);
+
+            // Add ambient dust behind roomba
+            if (Math.random() < 0.3) {
+                dustParticles.push({
+                    x: getRoombaX() - 10,
+                    y: ROOMBA_Y - 5 - Math.random() * 10,
+                    vx: -1 - Math.random(),
+                    vy: (Math.random() - 0.5) * 0.5,
+                    life: 20 + Math.random() * 20,
+                    size: 2 + Math.random() * 3
+                });
+            }
+        }
+
+        // Game over
+        function gameOver() {
+            gameState = 'gameover';
+
+            if (score > highScore) {
+                highScore = score;
+                saveHighScore(highScore);
+            }
+
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('highScoreDisplay').textContent = highScore;
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('ui').classList.remove('hidden');
+        }
+
+        // Save/Load high score
+        function saveHighScore(score) {
+            try {
+                if (tg?.CloudStorage) {
+                    tg.CloudStorage.setItem('highScore', score.toString());
+                } else {
+                    localStorage.setItem('brunoRoombaHighScore', score.toString());
+                }
+            } catch (e) {}
+        }
+
+        function loadHighScore() {
+            try {
+                if (tg?.CloudStorage) {
+                    tg.CloudStorage.getItem('highScore', (err, value) => {
+                        if (!err && value) highScore = parseInt(value) || 0;
+                    });
+                    return 0;
+                }
+                return parseInt(localStorage.getItem('brunoRoombaHighScore')) || 0;
+            } catch (e) {
+                return 0;
+            }
+        }
+
+        // Draw functions
+        function drawBackground() {
+            // Wall gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+            gradient.addColorStop(0, '#E8E0D5');
+            gradient.addColorStop(1, '#D5C9BA');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, GROUND_Y);
+
+            // Baseboard
+            ctx.fillStyle = '#8B7355';
+            ctx.fillRect(0, GROUND_Y - 15, CANVAS_WIDTH, 15);
+
+            // Background furniture silhouettes
+            backgroundItems.forEach(item => {
+                ctx.globalAlpha = item.shade;
+                ctx.fillStyle = '#9B8B75';
+
+                if (item.type === 'sofa') {
+                    ctx.fillRect(item.x, GROUND_Y - 100, 120, 85);
+                    ctx.fillRect(item.x - 10, GROUND_Y - 120, 20, 40);
+                    ctx.fillRect(item.x + 110, GROUND_Y - 120, 20, 40);
+
+                } else if (item.type === 'lamp') {
+                    ctx.fillRect(item.x + 15, GROUND_Y - 150, 10, 130);
+                    ctx.beginPath();
+                    ctx.moveTo(item.x, GROUND_Y - 150);
+                    ctx.lineTo(item.x + 40, GROUND_Y - 150);
+                    ctx.lineTo(item.x + 35, GROUND_Y - 190);
+                    ctx.lineTo(item.x + 5, GROUND_Y - 190);
+                    ctx.fill();
+
+                } else if (item.type === 'plant') {
+                    ctx.fillRect(item.x + 10, GROUND_Y - 50, 30, 50);
+                    ctx.beginPath();
+                    ctx.arc(item.x + 25, GROUND_Y - 80, 35, 0, Math.PI * 2);
+                    ctx.fill();
+
+                } else if (item.type === 'shelf') {
+                    ctx.fillRect(item.x, GROUND_Y - 180, 60, 10);
+                    ctx.fillRect(item.x, GROUND_Y - 130, 60, 10);
+                    ctx.fillRect(item.x, GROUND_Y - 80, 60, 10);
+
+                } else if (item.type === 'bookshelf') {
+                    // Tall bookshelf with books
+                    ctx.fillRect(item.x, GROUND_Y - 220, 70, 220);
+                    // Shelf dividers
+                    ctx.fillStyle = '#7B6B55';
+                    ctx.fillRect(item.x + 5, GROUND_Y - 170, 60, 8);
+                    ctx.fillRect(item.x + 5, GROUND_Y - 115, 60, 8);
+                    ctx.fillRect(item.x + 5, GROUND_Y - 60, 60, 8);
+                    // Books (varied heights)
+                    ctx.fillStyle = '#8B7B65';
+                    ctx.fillRect(item.x + 8, GROUND_Y - 210, 12, 35);
+                    ctx.fillRect(item.x + 22, GROUND_Y - 205, 10, 30);
+                    ctx.fillRect(item.x + 35, GROUND_Y - 215, 14, 40);
+                    ctx.fillRect(item.x + 52, GROUND_Y - 208, 11, 33);
+                    ctx.fillStyle = '#9B8B75';
+
+                } else if (item.type === 'closet') {
+                    // Wardrobe/closet
+                    ctx.fillRect(item.x, GROUND_Y - 230, 90, 230);
+                    // Door line
+                    ctx.fillStyle = '#7B6B55';
+                    ctx.fillRect(item.x + 43, GROUND_Y - 220, 4, 210);
+                    // Handles
+                    ctx.fillRect(item.x + 35, GROUND_Y - 120, 6, 15);
+                    ctx.fillRect(item.x + 49, GROUND_Y - 120, 6, 15);
+                    ctx.fillStyle = '#9B8B75';
+
+                } else if (item.type === 'fridge') {
+                    // Refrigerator
+                    ctx.fillRect(item.x, GROUND_Y - 200, 65, 200);
+                    // Freezer door line
+                    ctx.fillStyle = '#7B6B55';
+                    ctx.fillRect(item.x + 5, GROUND_Y - 145, 55, 4);
+                    // Handle
+                    ctx.fillRect(item.x + 52, GROUND_Y - 130, 5, 25);
+                    ctx.fillRect(item.x + 52, GROUND_Y - 80, 5, 40);
+                    ctx.fillStyle = '#9B8B75';
+
+                } else if (item.type === 'tv') {
+                    // TV on stand
+                    ctx.fillRect(item.x, GROUND_Y - 50, 80, 50);
+                    // TV screen
+                    ctx.fillRect(item.x + 10, GROUND_Y - 130, 60, 45);
+                    // TV stand/neck
+                    ctx.fillRect(item.x + 35, GROUND_Y - 85, 10, 35);
+
+                } else if (item.type === 'window') {
+                    // Window with curtains
+                    ctx.fillStyle = '#A9C4D9';
+                    ctx.globalAlpha = item.shade * 0.7;
+                    ctx.fillRect(item.x + 15, GROUND_Y - 200, 70, 90);
+                    ctx.globalAlpha = item.shade;
+                    ctx.fillStyle = '#9B8B75';
+                    // Frame
+                    ctx.fillRect(item.x + 10, GROUND_Y - 205, 80, 8);
+                    ctx.fillRect(item.x + 10, GROUND_Y - 110, 80, 8);
+                    ctx.fillRect(item.x + 10, GROUND_Y - 205, 8, 103);
+                    ctx.fillRect(item.x + 82, GROUND_Y - 205, 8, 103);
+                    ctx.fillRect(item.x + 47, GROUND_Y - 200, 6, 90);
+                    // Curtains
+                    ctx.fillRect(item.x, GROUND_Y - 210, 18, 120);
+                    ctx.fillRect(item.x + 82, GROUND_Y - 210, 18, 120);
+
+                } else if (item.type === 'clock') {
+                    // Grandfather clock
+                    ctx.fillRect(item.x + 5, GROUND_Y - 220, 40, 220);
+                    // Clock face
+                    ctx.beginPath();
+                    ctx.arc(item.x + 25, GROUND_Y - 180, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#7B6B55';
+                    ctx.beginPath();
+                    ctx.arc(item.x + 25, GROUND_Y - 180, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    // Pendulum area
+                    ctx.fillStyle = '#8B7B65';
+                    ctx.fillRect(item.x + 10, GROUND_Y - 140, 30, 80);
+                    ctx.fillStyle = '#9B8B75';
+
+                } else if (item.type === 'fireplace') {
+                    // Fireplace
+                    ctx.fillRect(item.x, GROUND_Y - 130, 100, 130);
+                    // Opening
+                    ctx.fillStyle = '#5B4B35';
+                    ctx.fillRect(item.x + 15, GROUND_Y - 80, 70, 80);
+                    // Mantle
+                    ctx.fillStyle = '#8B7B65';
+                    ctx.fillRect(item.x - 5, GROUND_Y - 140, 110, 15);
+                    ctx.fillStyle = '#9B8B75';
+
+                } else if (item.type === 'cabinet') {
+                    // Kitchen/display cabinet
+                    ctx.fillRect(item.x, GROUND_Y - 100, 75, 100);
+                    // Upper glass section
+                    ctx.fillStyle = '#A9B4C0';
+                    ctx.globalAlpha = item.shade * 0.5;
+                    ctx.fillRect(item.x + 5, GROUND_Y - 90, 65, 40);
+                    ctx.globalAlpha = item.shade;
+                    ctx.fillStyle = '#9B8B75';
+                    // Drawer lines
+                    ctx.fillStyle = '#7B6B55';
+                    ctx.fillRect(item.x + 5, GROUND_Y - 45, 65, 3);
+                    ctx.fillRect(item.x + 5, GROUND_Y - 25, 65, 3);
+                    ctx.fillStyle = '#9B8B75';
+                }
+
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function drawFloor() {
+            // Floor
+            ctx.fillStyle = '#C4A882';
+            ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, CANVAS_HEIGHT - GROUND_Y);
+
+            // Floor pattern (wood planks)
+            ctx.strokeStyle = '#B09670';
+            ctx.lineWidth = 1;
+            for (let x = -floorOffset; x < CANVAS_WIDTH + 40; x += 40) {
+                ctx.beginPath();
+                ctx.moveTo(x, GROUND_Y);
+                ctx.lineTo(x, CANVAS_HEIGHT);
+                ctx.stroke();
+            }
+
+            // Floor shine
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, 3);
+        }
+
+        function drawRoomba() {
+            const x = getRoombaX();
+            const y = ROOMBA_Y;
+            const w = roomba.width * SCALE;
+            const h = roomba.height;
+            const sideHeight = 18;
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y + sideHeight + 4, w/2 + 3, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Side/edge of Roomba (gives 3D depth) - drawn from top of side down
+            // Dark bottom edge
+            ctx.fillStyle = '#888888';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y + sideHeight, w/2 - 1, 5, 0, 0, Math.PI);
+            ctx.fill();
+
+            // Side band (gray)
+            ctx.fillStyle = '#A0A0A0';
+            ctx.fillRect(x + 3, y, w - 6, sideHeight);
+
+            // Side edge curves
+            ctx.fillStyle = '#A0A0A0';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y, w/2 - 3, 6, 0, 0, Math.PI);
+            ctx.fill();
+
+            // Main body top (white)
+            ctx.fillStyle = '#F0F0F0';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y, w/2, h/2 + 4, 0, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // Top surface (brighter white)
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y - 2, w/2 - 4, h/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Subtle edge ring
+            ctx.strokeStyle = '#E0E0E0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y - 1, w/2 - 2, h/2 + 1, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Control panel area
+            ctx.fillStyle = '#E8E8E8';
+            ctx.beginPath();
+            ctx.ellipse(x + w/2, y - 3, 18, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Power button (green light)
+            ctx.fillStyle = '#00CC00';
+            ctx.beginPath();
+            ctx.arc(x + w/2, y - 3, 5, 0, Math.PI * 2);
+            ctx.fill();
+            // Button glow
+            ctx.fillStyle = 'rgba(0, 220, 0, 0.4)';
+            ctx.beginPath();
+            ctx.arc(x + w/2, y - 3, 9, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Front bumper indicator
+            ctx.fillStyle = '#D0D0D0';
+            ctx.beginPath();
+            ctx.arc(x + w/2, y - 1, w/2 - 6, Math.PI * 1.15, Math.PI * 1.85);
+            ctx.lineTo(x + w/2 + (w/2 - 12) * Math.cos(Math.PI * 1.85), y - 1 + (w/2 - 12) * Math.sin(Math.PI * 1.85));
+            ctx.arc(x + w/2, y - 1, w/2 - 12, Math.PI * 1.85, Math.PI * 1.15, true);
+            ctx.fill();
+        }
+
+        function drawBruno() {
+            const x = getBrunoX();
+            const y = bruno.y;
+            const w = bruno.width * SCALE;
+            const h = bruno.height * SCALE;
+
+            ctx.save();
+
+            // Slight tilt when jumping
+            if (bruno.isJumping) {
+                ctx.translate(x + w/2, y + h/2);
+                ctx.rotate(bruno.vy * 0.01);
+                ctx.translate(-(x + w/2), -(y + h/2));
+            }
+
+            if (brunoImg.complete && brunoImg.naturalHeight !== 0) {
+                ctx.drawImage(brunoImg, x, y, w, h);
+            } else {
+                // Fallback cat
+                // Body
+                ctx.fillStyle = '#FF8C00';
+                ctx.beginPath();
+                ctx.ellipse(x + w/2, y + h/2 + 5, w/2 - 5, h/2 - 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Head
+                ctx.beginPath();
+                ctx.arc(x + w/2 + 10, y + h/3, w/4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ears
+                ctx.beginPath();
+                ctx.moveTo(x + w/2 + 5, y + h/4 - 5);
+                ctx.lineTo(x + w/2, y + 5);
+                ctx.lineTo(x + w/2 + 15, y + h/4);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(x + w/2 + 20, y + h/4 - 5);
+                ctx.lineTo(x + w/2 + 30, y + 5);
+                ctx.lineTo(x + w/2 + 25, y + h/4);
+                ctx.fill();
+
+                // Eyes
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(x + w/2 + 5, y + h/3 - 3, 3, 0, Math.PI * 2);
+                ctx.arc(x + w/2 + 18, y + h/3 - 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tail
+                ctx.strokeStyle = '#FF8C00';
+                ctx.lineWidth = 6;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(x + 10, y + h/2);
+                ctx.quadraticCurveTo(x - 10, y + h/2 - 20, x + 5, y + h/3);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(obs => {
+                const legWidth = 6 * SCALE;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.15)';
+                ctx.fillRect(obs.x + 5, GROUND_Y + 2, obs.width - 10, 6);
+
+                if (obs.type === 'table') {
+                    // Table - tall legs, Bruno passes under
+                    const tableTopY = obs.y;
+
+                    // Legs (wooden brown)
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(obs.x + 6, tableTopY + obs.height, legWidth, obs.legHeight);
+                    ctx.fillRect(obs.x + obs.width - 6 - legWidth, tableTopY + obs.height, legWidth, obs.legHeight);
+
+                    // Table top
+                    ctx.fillStyle = '#A0522D';
+                    ctx.fillRect(obs.x, tableTopY, obs.width, obs.height);
+
+                    // Table top edge highlight
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(obs.x, tableTopY + obs.height - 3, obs.width, 3);
+
+                    // Surface shine
+                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                    ctx.fillRect(obs.x + 4, tableTopY + 2, obs.width - 8, 4);
+
+                } else if (obs.type === 'chair') {
+                    // Chair - short legs, Bruno must jump over
+                    const seatY = obs.y;
+
+                    // Legs
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(obs.x + 4, seatY + obs.height, legWidth, obs.legHeight);
+                    ctx.fillRect(obs.x + obs.width - 4 - legWidth, seatY + obs.height, legWidth, obs.legHeight);
+
+                    // Seat
+                    ctx.fillStyle = '#CD853F';
+                    ctx.fillRect(obs.x, seatY, obs.width, obs.height);
+
+                    // Seat cushion
+                    ctx.fillStyle = '#DEB887';
+                    ctx.fillRect(obs.x + 3, seatY + 2, obs.width - 6, obs.height - 4);
+
+                    // Back of chair
+                    ctx.fillStyle = '#8B4513';
+                    const backWidth = 6 * SCALE;
+                    ctx.fillRect(obs.x, seatY - obs.backHeight, backWidth, obs.backHeight);
+                    ctx.fillRect(obs.x + obs.width - backWidth, seatY - obs.backHeight, backWidth, obs.backHeight);
+                    // Back top rail
+                    ctx.fillRect(obs.x, seatY - obs.backHeight, obs.width, 8 * SCALE);
+                    // Back middle rail
+                    ctx.fillRect(obs.x, seatY - obs.backHeight * 0.5, obs.width, 5 * SCALE);
+                }
+            });
+        }
+
+        function drawDust() {
+            dustParticles.forEach(p => {
+                ctx.globalAlpha = p.life / 40;
+                ctx.fillStyle = '#C4A882';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function drawHUD() {
+            if (gameState === 'playing') {
+                document.getElementById('scoreHUD').textContent = score;
+                document.getElementById('highScoreHUD').textContent = `Best: ${highScore}`;
+
+                // Draw speed up notification
+                if (speedUpNotification > 0) {
+                    const alpha = Math.min(1, speedUpNotification / 30); // Fade out in last 0.5s
+                    const scale = 1 + (speedUpNotification > 90 ? (120 - speedUpNotification) / 30 * 0.3 : 0); // Pop in effect
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#FF6600';
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 3;
+                    ctx.font = `bold ${Math.floor(28 * scale)}px -apple-system, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    const text = `SPEED UP! Level ${speedLevel}`;
+                    const x = CANVAS_WIDTH / 2;
+                    const y = CANVAS_HEIGHT / 3;
+
+                    ctx.strokeText(text, x, y);
+                    ctx.fillText(text, x, y);
+                    ctx.restore();
+                }
+            } else {
+                document.getElementById('scoreHUD').textContent = '';
+                document.getElementById('highScoreHUD').textContent = '';
+            }
+        }
+
+        // Main render
+        function render() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            drawBackground();
+            drawFloor();
+            drawDust();
+            drawObstacles();
+            drawRoomba();
+            drawBruno();
+            drawHUD();
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start
+        initGame();
+        gameLoop();
+    </script>
+</body>
+</html>
