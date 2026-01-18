@@ -124,11 +124,34 @@
         #highScoreHUD {
             position: fixed;
             top: 20px;
-            right: 20px;
+            right: 70px;
             font-size: 14px;
             color: #ffd700;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
             z-index: 10;
+        }
+
+        #muteButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        #muteButton:active {
+            background: rgba(0, 0, 0, 0.7);
         }
     </style>
 </head>
@@ -137,6 +160,7 @@
         <canvas id="gameCanvas"></canvas>
         <div id="scoreHUD"></div>
         <div id="highScoreHUD"></div>
+        <button id="muteButton" aria-label="Toggle sound">🔊</button>
         <div id="ui">
             <div class="overlay" id="startScreen">
                 <h1>Bruno's Roomba Ride</h1>
@@ -159,6 +183,72 @@
             tg.ready();
             tg.expand();
         }
+
+        // Sound system
+        let audioCtx = null;
+        let isMuted = localStorage.getItem('brumbaMuted') === 'true';
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted || !audioCtx) return;
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if (type === 'jump') {
+                // Quick upward blip
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(300, now);
+                oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gainNode.gain.setValueAtTime(0.15, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                oscillator.start(now);
+                oscillator.stop(now + 0.15);
+            } else if (type === 'crash') {
+                // Low thud
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(150, now);
+                oscillator.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+                gainNode.gain.setValueAtTime(0.2, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                oscillator.start(now);
+                oscillator.stop(now + 0.3);
+            } else if (type === 'speedup') {
+                // Ascending arpeggio
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(400, now);
+                oscillator.frequency.setValueAtTime(500, now + 0.1);
+                oscillator.frequency.setValueAtTime(600, now + 0.2);
+                oscillator.frequency.setValueAtTime(800, now + 0.3);
+                gainNode.gain.setValueAtTime(0.12, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                oscillator.start(now);
+                oscillator.stop(now + 0.4);
+            }
+        }
+
+        // Mute button
+        const muteButton = document.getElementById('muteButton');
+        muteButton.textContent = isMuted ? '🔇' : '🔊';
+
+        muteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isMuted = !isMuted;
+            localStorage.setItem('brumbaMuted', isMuted);
+            muteButton.textContent = isMuted ? '🔇' : '🔊';
+        });
 
         // Canvas setup
         const canvas = document.getElementById('gameCanvas');
@@ -297,6 +387,9 @@
         function handleTap(e) {
             if (e) e.preventDefault();
 
+            // Initialize audio on first interaction
+            initAudio();
+
             if (gameState === 'start') {
                 gameState = 'playing';
                 document.getElementById('ui').classList.add('hidden');
@@ -315,6 +408,7 @@
             if (!bruno.isJumping) {
                 bruno.vy = JUMP_FORCE * SCALE;
                 bruno.isJumping = true;
+                playSound('jump');
                 // Add dust burst
                 for (let i = 0; i < 5; i++) {
                     dustParticles.push({
@@ -400,6 +494,7 @@
                 speedLevel = newSpeedLevel;
                 gameSpeed += 1; // Noticeable speed boost
                 speedUpNotification = 120; // Show notification for 2 seconds (60fps)
+                playSound('speedup');
             }
 
             // Decrease notification timer
@@ -525,6 +620,7 @@
         // Game over
         function gameOver() {
             gameState = 'gameover';
+            playSound('crash');
 
             if (score > highScore) {
                 highScore = score;
