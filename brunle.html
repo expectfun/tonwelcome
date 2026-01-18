@@ -85,6 +85,10 @@
       font-size: 24px;
       cursor: pointer;
       padding: 4px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* Game container */
@@ -477,7 +481,7 @@
   <script src="dictionary.js"></script>
 
   <header>
-    <button class="header-btn" id="statsBtn">📊</button>
+    <a href="https://expectfun.github.io/tonwelcome/brunogames.html" class="header-btn">🏠</a>
     <h1 class="title">БРУНЛЬ</h1>
     <div class="mode-toggle">
       <button class="mode-btn active" id="dailyBtn">День</button>
@@ -681,8 +685,7 @@
       document.getElementById('dailyBtn').addEventListener('click', () => setMode('daily'));
       document.getElementById('randomBtn').addEventListener('click', () => setMode('random'));
 
-      // Stats button
-      document.getElementById('statsBtn').addEventListener('click', showStats);
+      // Stats modal close
       document.getElementById('closeStats').addEventListener('click', () => statsModal.classList.remove('show'));
 
       // Bruno overlay buttons

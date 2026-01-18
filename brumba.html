@@ -133,7 +133,7 @@
 
         #muteButton {
             position: fixed;
-            top: 20px;
+            top: 70px;
             right: 20px;
             width: 40px;
             height: 40px;
@@ -156,7 +156,7 @@
 
         #pauseButton {
             position: fixed;
-            top: 70px;
+            top: 120px;
             right: 20px;
             width: 40px;
             height: 40px;
@@ -176,6 +176,30 @@
         #pauseButton:active {
             background: rgba(0, 0, 0, 0.7);
         }
+
+        #homeButton {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            text-decoration: none;
+        }
+
+        #homeButton:active {
+            background: rgba(0, 0, 0, 0.7);
+        }
     </style>
 </head>
 <body>
@@ -183,6 +207,7 @@
         <canvas id="gameCanvas"></canvas>
         <div id="scoreHUD"></div>
         <div id="highScoreHUD"></div>
+        <a href="https://expectfun.github.io/tonwelcome/brunogames.html" id="homeButton" aria-label="Home">🏠</a>
         <button id="muteButton" aria-label="Toggle sound">🔊</button>
         <button id="pauseButton" aria-label="Pause game">⏸️</button>
         <div id="ui">
