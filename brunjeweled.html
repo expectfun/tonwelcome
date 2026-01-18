@@ -765,11 +765,10 @@
         .achievement-popup-title { color: var(--score-color); font-size: 10px; text-transform: uppercase; }
         .achievement-popup-name { color: var(--tg-theme-text-color); font-size: 14px; font-weight: bold; }
 
-        /* Sound toggle */
-        .sound-toggle {
+        /* Top bar buttons */
+        .top-btn {
             position: fixed;
             top: 10px;
-            right: 10px;
             background: var(--tg-theme-secondary-bg-color, #2a2a4a);
             border: 1px solid var(--border-color);
             border-radius: 50%;
@@ -781,12 +780,22 @@
             cursor: pointer;
             font-size: 18px;
             z-index: 50;
+            text-decoration: none;
+        }
+
+        .home-btn {
+            left: 10px;
+        }
+
+        .sound-toggle {
+            right: 10px;
         }
     </style>
 </head>
 <body>
     <div class="stars"></div>
-    <div class="sound-toggle" onclick="toggleSound()" id="sound-toggle">🔊</div>
+    <a href="https://expectfun.github.io/tonwelcome/brunogames.html" class="top-btn home-btn">🏠</a>
+    <div class="top-btn sound-toggle" onclick="toggleSound()" id="sound-toggle">🔊</div>
 
     <div class="game-container">
         <h1>BRUNJEWELED</h1>
