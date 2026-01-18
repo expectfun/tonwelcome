@@ -10,12 +10,14 @@
             --bruno-orange: #e88a35;
             --bruno-orange-dark: #c76820;
             --bruno-orange-light: #ffb060;
+            --accent-color: #e88a35;
             --bg-color: #1a1208;
             --bg-secondary: #2a1f12;
             --text-color: #fff8e8;
             --text-muted: #c4a882;
             --card-bg: #3a2a18;
             --card-hover: #4a3a22;
+            --paw-opacity: 0.06;
         }
 
         @media (prefers-color-scheme: light) {
@@ -26,6 +28,7 @@
                 --text-muted: #7a5a30;
                 --card-bg: #ffe8c8;
                 --card-hover: #ffd8a8;
+                --paw-opacity: 0.08;
             }
         }
 
@@ -99,8 +102,9 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            opacity: 0.05;
+            opacity: var(--paw-opacity);
             z-index: -1;
+            color: var(--text-color);
         }
 
         /* Game Cards */
@@ -144,7 +148,7 @@
         .game-card:hover,
         .game-card:active {
             background: var(--card-hover);
-            border-color: var(--bruno-orange);
+            border-color: var(--accent-color);
             transform: translateX(5px);
         }
 
@@ -184,7 +188,7 @@
         }
 
         .game-arrow {
-            color: var(--bruno-orange);
+            color: var(--accent-color);
             font-size: 20px;
             opacity: 0.6;
             transition: all 0.3s ease;
@@ -335,20 +339,40 @@
 
             // Apply Telegram theme colors
             if (tg.themeParams) {
-                const isDark = isColorDark(tg.themeParams.bg_color || '#1a1208');
+                const bgColor = tg.themeParams.bg_color;
+                const secondaryBg = tg.themeParams.secondary_bg_color;
+                const isDark = isColorDark(bgColor || '#1a1208');
 
-                if (isDark) {
-                    document.documentElement.style.setProperty('--bg-color', tg.themeParams.bg_color || '#1a1208');
-                    document.documentElement.style.setProperty('--bg-secondary', tg.themeParams.secondary_bg_color || '#2a1f12');
-                    document.documentElement.style.setProperty('--text-color', tg.themeParams.text_color || '#fff8e8');
-                    document.documentElement.style.setProperty('--text-muted', tg.themeParams.hint_color || '#c4a882');
+                document.documentElement.style.setProperty('--bg-color', bgColor || (isDark ? '#1a1208' : '#fff8f0'));
+                document.documentElement.style.setProperty('--text-color', tg.themeParams.text_color || (isDark ? '#fff8e8' : '#3a2810'));
+                document.documentElement.style.setProperty('--text-muted', tg.themeParams.hint_color || (isDark ? '#c4a882' : '#7a5a30'));
+
+                // Use secondary_bg for cards, or derive from bg
+                if (secondaryBg) {
+                    document.documentElement.style.setProperty('--card-bg', secondaryBg);
+                    document.documentElement.style.setProperty('--card-hover', adjustBrightness(secondaryBg, isDark ? 15 : -10));
                 } else {
-                    document.documentElement.style.setProperty('--bg-color', tg.themeParams.bg_color || '#fff8f0');
-                    document.documentElement.style.setProperty('--bg-secondary', tg.themeParams.secondary_bg_color || '#ffeed8');
-                    document.documentElement.style.setProperty('--text-color', tg.themeParams.text_color || '#3a2810');
-                    document.documentElement.style.setProperty('--text-muted', tg.themeParams.hint_color || '#7a5a30');
+                    document.documentElement.style.setProperty('--card-bg', isDark ? '#3a2a18' : '#ffe8c8');
+                    document.documentElement.style.setProperty('--card-hover', isDark ? '#4a3a22' : '#ffd8a8');
                 }
+
+                // Use button color for accent, or keep Bruno orange
+                if (tg.themeParams.button_color) {
+                    document.documentElement.style.setProperty('--accent-color', tg.themeParams.button_color);
+                }
+
+                // Adjust paw opacity for theme
+                document.documentElement.style.setProperty('--paw-opacity', isDark ? '0.06' : '0.1');
             }
+        }
+
+        // Adjust color brightness
+        function adjustBrightness(hex, percent) {
+            hex = hex.replace('#', '');
+            const r = Math.min(255, Math.max(0, parseInt(hex.substr(0, 2), 16) + percent));
+            const g = Math.min(255, Math.max(0, parseInt(hex.substr(2, 2), 16) + percent));
+            const b = Math.min(255, Math.max(0, parseInt(hex.substr(4, 2), 16) + percent));
+            return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
         }
 
         function isColorDark(hexColor) {
