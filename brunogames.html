@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Bruno's Game Den</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bruno-orange: #e88a35;
+            --bruno-orange-dark: #c76820;
+            --bruno-orange-light: #ffb060;
+            --bg-color: #1a1208;
+            --bg-secondary: #2a1f12;
+            --text-color: #fff8e8;
+            --text-muted: #c4a882;
+            --card-bg: #3a2a18;
+            --card-hover: #4a3a22;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-color: #fff8f0;
+                --bg-secondary: #ffeed8;
+                --text-color: #3a2810;
+                --text-muted: #7a5a30;
+                --card-bg: #ffe8c8;
+                --card-hover: #ffd8a8;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Header with Bruno */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .bruno-mascot {
+            width: 140px;
+            height: 140px;
+            margin: 0 auto 15px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .bruno-mascot img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 8px 16px rgba(232, 138, 53, 0.4));
+        }
+
+        h1 {
+            font-size: 28px;
+            background: linear-gradient(180deg, var(--bruno-orange-light) 0%, var(--bruno-orange) 50%, var(--bruno-orange-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Paw prints decoration */
+        .paw-prints {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.05;
+            z-index: -1;
+        }
+
+        /* Game Cards */
+        .games-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .game-card:hover::before,
+        .game-card:active::before {
+            left: 100%;
+        }
+
+        .game-card:hover,
+        .game-card:active {
+            background: var(--card-hover);
+            border-color: var(--bruno-orange);
+            transform: translateX(5px);
+        }
+
+        .game-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .game-icon.brumba { background: linear-gradient(135deg, #4ade80, #22c55e); }
+        .game-icon.brunle { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+        .game-icon.quiz { background: linear-gradient(135deg, #f472b6, #ec4899); }
+        .game-icon.brunjeweled { background: linear-gradient(135deg, var(--bruno-orange-light), var(--bruno-orange)); }
+
+        .game-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .game-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-color);
+        }
+
+        .game-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .game-arrow {
+            color: var(--bruno-orange);
+            font-size: 20px;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+
+        .game-card:hover .game-arrow,
+        .game-card:active .game-arrow {
+            opacity: 1;
+            transform: translateX(5px);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--card-bg);
+        }
+
+        .footer-text {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .paw-icon {
+            display: inline-block;
+            margin: 0 2px;
+        }
+
+        /* Touch feedback */
+        .game-card:active {
+            transform: scale(0.98) translateX(5px);
+        }
+
+        /* Prevent text selection */
+        .container {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+        }
+
+        /* New badge */
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #ef4444;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Paw prints background -->
+    <div class="paw-prints">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <pattern id="pawPattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                    <g fill="currentColor">
+                        <ellipse cx="25" cy="40" rx="8" ry="10"/>
+                        <ellipse cx="15" cy="25" rx="5" ry="6"/>
+                        <ellipse cx="35" cy="25" rx="5" ry="6"/>
+                        <ellipse cx="10" cy="38" rx="4" ry="5"/>
+                        <ellipse cx="40" cy="38" rx="4" ry="5"/>
+                        <ellipse cx="75" cy="80" rx="6" ry="8" transform="rotate(20 75 80)"/>
+                        <ellipse cx="68" cy="68" rx="4" ry="5" transform="rotate(20 68 68)"/>
+                        <ellipse cx="82" cy="70" rx="4" ry="5" transform="rotate(20 82 70)"/>
+                        <ellipse cx="65" cy="78" rx="3" ry="4" transform="rotate(20 65 78)"/>
+                        <ellipse cx="88" cy="82" rx="3" ry="4" transform="rotate(20 88 82)"/>
+                    </g>
+                </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#pawPattern)"/>
+        </svg>
+    </div>
+
+    <div class="container">
+        <header class="header">
+            <div class="bruno-mascot">
+                <img src="https://expectfun.github.io/tonwelcome/brumba.png" alt="Bruno the Cat">
+            </div>
+            <h1>BRUNO'S GAME DEN</h1>
+            <p class="subtitle">Purrfect games for cat lovers</p>
+        </header>
+
+        <div class="games-grid">
+            <a href="https://expectfun.github.io/tonwelcome/brumba.html" class="game-card">
+                <div class="game-icon brumba">
+                    <span>🤖</span>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Brumba</div>
+                    <div class="game-desc">Help Bruno ride his Roomba through the house! Tap to jump over chairs or stay low under tables.</div>
+                </div>
+                <span class="game-arrow">&#8250;</span>
+            </a>
+
+            <a href="https://expectfun.github.io/tonwelcome/brunle.html" class="game-card">
+                <div class="game-icon brunle">
+                    <span>📝</span>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Brunle</div>
+                    <div class="game-desc">Guess the secret cat word in 6 tries. A feline twist on the classic word game!</div>
+                </div>
+                <span class="game-arrow">&#8250;</span>
+            </a>
+
+            <a href="https://expectfun.github.io/tonwelcome/quiz.html" class="game-card">
+                <div class="game-icon quiz">
+                    <span>🎬</span>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Bruno's Film Quiz</div>
+                    <div class="game-desc">Test your movie knowledge with Bruno as your host! How many films can you guess?</div>
+                </div>
+                <span class="game-arrow">&#8250;</span>
+            </a>
+
+            <a href="https://expectfun.github.io/tonwelcome/brunjeweled.html" class="game-card">
+                <div class="game-icon brunjeweled">
+                    <span>😺</span>
+                </div>
+                <div class="game-info">
+                    <div class="game-title">Brunjeweled</div>
+                    <div class="game-desc">Match 3 or more cats to score points! Features Bruno and his feline friends.</div>
+                </div>
+                <span class="game-arrow">&#8250;</span>
+            </a>
+        </div>
+
+        <footer class="footer">
+            <p class="footer-text">
+                Made with <span class="paw-icon">🐾</span> for Bruno
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Telegram WebApp integration
+        const tg = window.Telegram?.WebApp;
+
+        if (tg) {
+            tg.ready();
+            tg.expand();
+
+            // Apply Telegram theme colors
+            if (tg.themeParams) {
+                const isDark = isColorDark(tg.themeParams.bg_color || '#1a1208');
+
+                if (isDark) {
+                    document.documentElement.style.setProperty('--bg-color', tg.themeParams.bg_color || '#1a1208');
+                    document.documentElement.style.setProperty('--bg-secondary', tg.themeParams.secondary_bg_color || '#2a1f12');
+                    document.documentElement.style.setProperty('--text-color', tg.themeParams.text_color || '#fff8e8');
+                    document.documentElement.style.setProperty('--text-muted', tg.themeParams.hint_color || '#c4a882');
+                } else {
+                    document.documentElement.style.setProperty('--bg-color', tg.themeParams.bg_color || '#fff8f0');
+                    document.documentElement.style.setProperty('--bg-secondary', tg.themeParams.secondary_bg_color || '#ffeed8');
+                    document.documentElement.style.setProperty('--text-color', tg.themeParams.text_color || '#3a2810');
+                    document.documentElement.style.setProperty('--text-muted', tg.themeParams.hint_color || '#7a5a30');
+                }
+            }
+        }
+
+        function isColorDark(hexColor) {
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance < 0.5;
+        }
+
+        // Haptic feedback on card tap
+        document.querySelectorAll('.game-card').forEach(card => {
+            card.addEventListener('click', () => {
+                if (tg?.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
