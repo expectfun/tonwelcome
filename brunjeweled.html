@@ -1,0 +1,2676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <title>Brunjeweled - Cat Match Game</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #0a0a1a;
+            --tg-theme-text-color: #ffffff;
+            --tg-theme-hint-color: #aaaaaa;
+            --tg-theme-button-color: #667eea;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-secondary-bg-color: #1a1a3a;
+            --timer-color: #4ecdc4;
+            --timer-warning: #f7b733;
+            --timer-critical: #fc4a1a;
+            --score-color: #ffd700;
+            --score-glow: rgba(255, 215, 0, 0.8);
+            --cascade-color: #ff6b6b;
+            --cascade-glow: rgba(255, 107, 107, 0.8);
+            --time-bonus-color: #4ecdc4;
+            --time-bonus-glow: rgba(78, 205, 196, 0.8);
+            --board-bg: rgba(0, 0, 0, 0.3);
+            --cell-bg: rgba(0, 0, 0, 0.2);
+            --stars-opacity: 0.5;
+            --leaderboard-score: #4ecdc4;
+            --stat-value-color: #4ecdc4;
+            --game-over-title: #ffd700;
+            --border-color: #3a3a5a;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --tg-theme-bg-color: #f0f2f5;
+                --tg-theme-text-color: #1a1a2e;
+                --tg-theme-hint-color: #666677;
+                --tg-theme-button-color: #5865f2;
+                --tg-theme-button-text-color: #ffffff;
+                --tg-theme-secondary-bg-color: #ffffff;
+                --timer-color: #0d9488;
+                --timer-warning: #d97706;
+                --timer-critical: #dc2626;
+                --score-color: #b8860b;
+                --score-glow: rgba(184, 134, 11, 0.6);
+                --cascade-color: #dc2626;
+                --cascade-glow: rgba(220, 38, 38, 0.6);
+                --time-bonus-color: #0d9488;
+                --time-bonus-glow: rgba(13, 148, 136, 0.6);
+                --board-bg: rgba(0, 0, 0, 0.08);
+                --cell-bg: rgba(0, 0, 0, 0.05);
+                --stars-opacity: 0.15;
+                --leaderboard-score: #0d9488;
+                --stat-value-color: #0d9488;
+                --game-over-title: #b8860b;
+                --border-color: #d1d5db;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--tg-theme-bg-color, #0a0a1a);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            padding: 10px;
+            padding-bottom: env(safe-area-inset-bottom, 10px);
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image:
+                radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.7), transparent),
+                radial-gradient(2px 2px at 160px 120px, rgba(255,255,255,0.5), transparent);
+            background-size: 200px 150px;
+            animation: twinkle 4s ease-in-out infinite;
+            opacity: var(--stars-opacity);
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+
+        .game-container {
+            text-align: center;
+            z-index: 1;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            font-size: clamp(24px, 6vw, 36px);
+            background: linear-gradient(180deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: 4px;
+            font-weight: bold;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .mode-btn {
+            padding: 6px 16px;
+            font-size: 12px;
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            color: var(--tg-theme-hint-color, #888);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--tg-theme-button-color, #667eea);
+            color: var(--tg-theme-button-text-color, white);
+            border-color: var(--tg-theme-button-color, #667eea);
+        }
+
+        .timer-display {
+            font-size: 24px;
+            color: var(--timer-color);
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: none;
+        }
+
+        .timer-display.active {
+            display: block;
+        }
+
+        .timer-display.warning { color: var(--timer-warning); }
+        .timer-display.critical { color: var(--timer-critical); animation: pulse 0.3s ease infinite; }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            margin-bottom: 8px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .timer-bar.active { display: block; }
+
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--timer-color), #44a08d);
+            border-radius: 3px;
+            transition: width 0.1s linear;
+        }
+
+        .timer-fill.warning { background: linear-gradient(90deg, var(--timer-warning), var(--timer-critical)); }
+        .timer-fill.critical { background: linear-gradient(90deg, var(--timer-critical), #cc0000); }
+
+        .info-bar {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            color: var(--tg-theme-hint-color, #aaa);
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .info-item span {
+            display: block;
+            color: var(--score-color);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .board-frame {
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            margin: 0 auto;
+            display: inline-block;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            background: var(--board-bg);
+            padding: 4px;
+            border-radius: 8px;
+            width: min(calc(100vw - 50px), 340px);
+            height: min(calc(100vw - 50px), 340px);
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: var(--cell-bg);
+            border-radius: 4px;
+        }
+
+        .gem {
+            width: 90%;
+            height: 90%;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            position: relative;
+            border-radius: 4px;
+        }
+
+        .gem:active {
+            transform: scale(1.1);
+        }
+
+        .gem.selected {
+            animation: gemPulse 0.5s ease infinite;
+        }
+
+        .gem.hint {
+            animation: hintPulse 0.8s ease infinite;
+        }
+
+        @keyframes gemPulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.1); filter: brightness(1.3); }
+        }
+
+        @keyframes hintPulse {
+            0%, 100% { transform: scale(1); box-shadow: none; }
+            50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(255,255,255,0.8); }
+        }
+
+        .gem.matched {
+            animation: explode 0.4s ease forwards;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3) rotate(180deg); opacity: 0.5; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        .gem.falling {
+            animation: drop 0.3s ease;
+        }
+
+        @keyframes drop {
+            0% { transform: translateY(-100%); opacity: 0; }
+            60% { transform: translateY(5%); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .gem svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+        }
+
+        /* Cat gem glow effects */
+        .gem-bruno svg { filter: drop-shadow(0 0 6px rgba(255, 140, 50, 0.6)); }
+        .gem-gray svg { filter: drop-shadow(0 0 6px rgba(120, 130, 145, 0.5)); }
+        .gem-black svg { filter: drop-shadow(0 0 6px rgba(60, 60, 80, 0.5)); }
+        .gem-cream svg { filter: drop-shadow(0 0 6px rgba(240, 220, 180, 0.5)); }
+        .gem-white svg { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5)); }
+        .gem-tabby svg { filter: drop-shadow(0 0 6px rgba(160, 120, 80, 0.5)); }
+        .gem-calico svg { filter: drop-shadow(0 0 6px rgba(200, 140, 100, 0.5)); }
+
+        .gem.flame-gem { animation: flameGlow 0.8s ease infinite; }
+        .gem.flame-gem::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #ff6600, transparent);
+            border-radius: 50%;
+        }
+
+        @keyframes flameGlow {
+            0%, 100% { box-shadow: 0 0 8px rgba(255, 100, 0, 0.6); }
+            50% { box-shadow: 0 0 15px rgba(255, 150, 0, 0.9); }
+        }
+
+        .gem.star-gem { animation: starGlow 0.6s ease infinite; }
+        .gem.star-gem::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle, #ffff00, transparent);
+            border-radius: 50%;
+        }
+
+        @keyframes starGlow {
+            0%, 100% { box-shadow: 0 0 8px rgba(255, 255, 100, 0.6); }
+            50% { box-shadow: 0 0 18px rgba(255, 255, 150, 1); }
+        }
+
+        .gem.hypercube { animation: hypercubeGlow 0.5s ease infinite; }
+
+        @keyframes hypercubeGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.8); filter: hue-rotate(0deg); }
+            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 1); filter: hue-rotate(180deg); }
+        }
+
+        .buttons {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            font-size: 13px;
+            background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+            color: var(--tg-theme-text-color, #ddd);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            background: var(--tg-theme-button-color, #667eea);
+        }
+
+        .score-popup {
+            position: fixed;
+            pointer-events: none;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--score-color);
+            text-shadow: 0 0 8px var(--score-glow);
+            animation: scoreFloat 1s ease forwards;
+            z-index: 100;
+        }
+
+        @keyframes scoreFloat {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+        }
+
+        .time-bonus {
+            position: fixed;
+            pointer-events: none;
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--time-bonus-color);
+            text-shadow: 0 0 8px var(--time-bonus-glow);
+            animation: timeBonusFloat 1s ease forwards;
+            z-index: 100;
+        }
+
+        @keyframes timeBonusFloat {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-30px) scale(1.1); opacity: 0; }
+        }
+
+        .cascade-text {
+            position: fixed;
+            pointer-events: none;
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--cascade-color);
+            text-shadow: 0 0 10px var(--cascade-glow);
+            animation: cascadeFloat 1.2s ease forwards;
+            z-index: 100;
+        }
+
+        @keyframes cascadeFloat {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; }
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .game-over-content {
+            text-align: center;
+            padding: 30px;
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            border-radius: 16px;
+            max-width: 90%;
+        }
+
+        .game-over h2 {
+            font-size: 28px;
+            color: var(--game-over-title);
+            margin-bottom: 15px;
+        }
+
+        .game-over p {
+            font-size: 18px;
+            color: var(--tg-theme-text-color, white);
+            margin-bottom: 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        .lightning {
+            position: fixed;
+            pointer-events: none;
+            background: linear-gradient(90deg, transparent, white, transparent);
+            animation: lightningFlash 0.3s ease forwards;
+            z-index: 50;
+        }
+
+        @keyframes lightningFlash {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .explosion {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: explodeRing 0.5s ease forwards;
+            z-index: 50;
+        }
+
+        @keyframes explodeRing {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        .blitz-countdown {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 60px;
+            font-weight: bold;
+            color: var(--score-color);
+            text-shadow: 0 0 20px var(--score-glow);
+            animation: countdownPop 0.8s ease forwards;
+            z-index: 150;
+        }
+
+        @keyframes countdownPop {
+            0% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+        }
+
+        /* Touch feedback */
+        .gem.touching {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+
+        .swipe-indicator {
+            position: fixed;
+            pointer-events: none;
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: swipeRipple 0.4s ease forwards;
+            z-index: 50;
+        }
+
+        @keyframes swipeRipple {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Prevent selection */
+        .game-container {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            overscroll-behavior-y: contain;
+        }
+
+        /* Leaderboard & Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            border-radius: 16px;
+            padding: 20px;
+            max-width: 350px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            color: var(--game-over-title);
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+
+        .leaderboard-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .leaderboard-tab {
+            padding: 6px 14px;
+            font-size: 12px;
+            background: rgba(255,255,255,0.1);
+            color: var(--tg-theme-hint-color, #888);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .leaderboard-tab.active {
+            background: var(--tg-theme-button-color, #667eea);
+            color: white;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .leaderboard-entry.highlight {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .leaderboard-rank {
+            width: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--tg-theme-hint-color, #888);
+        }
+
+        .leaderboard-entry:nth-child(1) .leaderboard-rank { color: #ffd700; }
+        .leaderboard-entry:nth-child(2) .leaderboard-rank { color: #c0c0c0; }
+        .leaderboard-entry:nth-child(3) .leaderboard-rank { color: #cd7f32; }
+
+        .leaderboard-name {
+            flex: 1;
+            color: var(--tg-theme-text-color, #ddd);
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .leaderboard-score {
+            color: var(--leaderboard-score);
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .leaderboard-empty {
+            text-align: center;
+            color: var(--tg-theme-hint-color, #666);
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        /* Name input */
+        .name-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            background: var(--board-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--tg-theme-text-color);
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .name-input:focus {
+            outline: none;
+            border-color: var(--tg-theme-button-color, #667eea);
+        }
+
+        .new-score-display {
+            font-size: 32px;
+            color: var(--leaderboard-score);
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        /* Achievements */
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .achievement-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            border: 2px solid transparent;
+        }
+
+        .achievement-badge.unlocked {
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .achievement-badge.locked {
+            opacity: 0.4;
+            filter: grayscale(1);
+        }
+
+        .badge-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .badge-name {
+            font-size: 9px;
+            color: var(--tg-theme-text-color, #ddd);
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .achievements-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--stat-value-color);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--tg-theme-hint-color, #888);
+            text-transform: uppercase;
+        }
+
+        .achievements-progress {
+            text-align: center;
+            color: var(--tg-theme-hint-color, #888);
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        /* Achievement Popup */
+        .achievement-popup {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tg-theme-secondary-bg-color, #1a1a3a);
+            border: 2px solid var(--score-color);
+            border-radius: 10px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 300;
+            animation: achievementSlide 0.4s ease, achievementFade 0.4s ease 2.5s forwards;
+        }
+
+        @keyframes achievementSlide {
+            0% { transform: translateX(-50%) translateY(-80px); opacity: 0; }
+            100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        @keyframes achievementFade {
+            0% { opacity: 1; }
+            100% { opacity: 0; transform: translateX(-50%) translateY(-15px); }
+        }
+
+        .achievement-popup-icon { font-size: 28px; }
+        .achievement-popup-title { color: var(--score-color); font-size: 10px; text-transform: uppercase; }
+        .achievement-popup-name { color: var(--tg-theme-text-color); font-size: 14px; font-weight: bold; }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--tg-theme-secondary-bg-color, #2a2a4a);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="sound-toggle" onclick="toggleSound()" id="sound-toggle">🔊</div>
+
+    <div class="game-container">
+        <h1>BRUNJEWELED</h1>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" id="mode-classic" onclick="setMode('classic')">Classic</button>
+            <button class="mode-btn" id="mode-blitz" onclick="setMode('blitz')">Blitz</button>
+        </div>
+
+        <div class="timer-display" id="timer-display">1:00</div>
+        <div class="timer-bar" id="timer-bar">
+            <div class="timer-fill" id="timer-fill" style="width: 100%"></div>
+        </div>
+
+        <div class="info-bar">
+            <div class="info-item">Score<span id="score">0</span></div>
+            <div class="info-item" id="level-container">Level<span id="level">1</span></div>
+            <div class="info-item" id="goal-container">Goal<span id="goal">1000</span></div>
+        </div>
+
+        <div class="board-frame">
+            <div id="game-board"></div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn" onclick="showHint()">Hint</button>
+            <button class="btn" onclick="showLeaderboard()">Scores</button>
+            <button class="btn" onclick="showAchievements()">🏆</button>
+            <button class="btn" onclick="resetGame()">New</button>
+        </div>
+    </div>
+
+    <div id="game-over" class="game-over hidden">
+        <div class="game-over-content">
+            <h2 id="game-over-title">GAME OVER</h2>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <button class="btn" onclick="resetGame()">Play Again</button>
+            <button class="btn" onclick="showLeaderboard()">Leaderboard</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>LEADERBOARD</h2>
+            <div class="leaderboard-tabs">
+                <button class="leaderboard-tab active" id="tab-classic" onclick="switchLeaderboardTab('classic')">Classic</button>
+                <button class="leaderboard-tab" id="tab-blitz" onclick="switchLeaderboardTab('blitz')">Blitz</button>
+            </div>
+            <div id="leaderboard-list"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="hideLeaderboard()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Name Input Modal -->
+    <div id="name-input-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>NEW HIGH SCORE!</h2>
+            <p id="highscore-rank" style="text-align:center;color:#aaa;margin-bottom:10px;">You ranked #1!</p>
+            <div class="new-score-display" id="new-score-display">0</div>
+            <input type="text" class="name-input" id="player-name-input" placeholder="Enter your name" maxlength="15" autocomplete="off">
+            <div class="modal-buttons">
+                <button class="btn" onclick="submitHighScore()">Submit</button>
+                <button class="btn" onclick="skipHighScore()">Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Modal -->
+    <div id="achievements-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>ACHIEVEMENTS</h2>
+            <div class="achievements-stats" id="achievements-stats"></div>
+            <div class="achievements-grid" id="achievements-grid"></div>
+            <div class="achievements-progress" id="achievements-progress"></div>
+            <div class="modal-buttons">
+                <button class="btn" onclick="hideAchievements()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram WebApp integration
+        const tg = window.Telegram?.WebApp;
+
+        if (tg) {
+            tg.ready();
+            tg.expand();
+
+            // Apply Telegram theme
+            if (tg.themeParams) {
+                const isDark = isColorDark(tg.themeParams.bg_color || '#0a0a1a');
+
+                document.documentElement.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#0a0a1a');
+                document.documentElement.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#ffffff');
+                document.documentElement.style.setProperty('--tg-theme-hint-color', tg.themeParams.hint_color || '#aaaaaa');
+                document.documentElement.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#667eea');
+                document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.themeParams.button_text_color || '#ffffff');
+                document.documentElement.style.setProperty('--tg-theme-secondary-bg-color', tg.themeParams.secondary_bg_color || '#1a1a3a');
+
+                // Apply theme-appropriate accent colors
+                if (isDark) {
+                    document.documentElement.style.setProperty('--timer-color', '#4ecdc4');
+                    document.documentElement.style.setProperty('--timer-warning', '#f7b733');
+                    document.documentElement.style.setProperty('--timer-critical', '#fc4a1a');
+                    document.documentElement.style.setProperty('--score-color', '#ffd700');
+                    document.documentElement.style.setProperty('--score-glow', 'rgba(255, 215, 0, 0.8)');
+                    document.documentElement.style.setProperty('--cascade-color', '#ff6b6b');
+                    document.documentElement.style.setProperty('--cascade-glow', 'rgba(255, 107, 107, 0.8)');
+                    document.documentElement.style.setProperty('--time-bonus-color', '#4ecdc4');
+                    document.documentElement.style.setProperty('--time-bonus-glow', 'rgba(78, 205, 196, 0.8)');
+                    document.documentElement.style.setProperty('--board-bg', 'rgba(0, 0, 0, 0.3)');
+                    document.documentElement.style.setProperty('--cell-bg', 'rgba(0, 0, 0, 0.2)');
+                    document.documentElement.style.setProperty('--stars-opacity', '0.5');
+                    document.documentElement.style.setProperty('--leaderboard-score', '#4ecdc4');
+                    document.documentElement.style.setProperty('--stat-value-color', '#4ecdc4');
+                    document.documentElement.style.setProperty('--game-over-title', '#ffd700');
+                    document.documentElement.style.setProperty('--border-color', '#3a3a5a');
+                } else {
+                    document.documentElement.style.setProperty('--timer-color', '#0d9488');
+                    document.documentElement.style.setProperty('--timer-warning', '#d97706');
+                    document.documentElement.style.setProperty('--timer-critical', '#dc2626');
+                    document.documentElement.style.setProperty('--score-color', '#b8860b');
+                    document.documentElement.style.setProperty('--score-glow', 'rgba(184, 134, 11, 0.6)');
+                    document.documentElement.style.setProperty('--cascade-color', '#dc2626');
+                    document.documentElement.style.setProperty('--cascade-glow', 'rgba(220, 38, 38, 0.6)');
+                    document.documentElement.style.setProperty('--time-bonus-color', '#0d9488');
+                    document.documentElement.style.setProperty('--time-bonus-glow', 'rgba(13, 148, 136, 0.6)');
+                    document.documentElement.style.setProperty('--board-bg', 'rgba(0, 0, 0, 0.08)');
+                    document.documentElement.style.setProperty('--cell-bg', 'rgba(0, 0, 0, 0.05)');
+                    document.documentElement.style.setProperty('--stars-opacity', '0.15');
+                    document.documentElement.style.setProperty('--leaderboard-score', '#0d9488');
+                    document.documentElement.style.setProperty('--stat-value-color', '#0d9488');
+                    document.documentElement.style.setProperty('--game-over-title', '#b8860b');
+                    document.documentElement.style.setProperty('--border-color', '#d1d5db');
+                }
+            }
+        }
+
+        // Helper to determine if a color is dark
+        function isColorDark(hexColor) {
+            const hex = hexColor.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            // Using relative luminance formula
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance < 0.5;
+        }
+
+        // Haptic feedback helper
+        function haptic(type = 'light') {
+            if (tg?.HapticFeedback) {
+                if (type === 'light') tg.HapticFeedback.impactOccurred('light');
+                else if (type === 'medium') tg.HapticFeedback.impactOccurred('medium');
+                else if (type === 'heavy') tg.HapticFeedback.impactOccurred('heavy');
+                else if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+                else if (type === 'error') tg.HapticFeedback.notificationOccurred('error');
+            }
+        }
+
+        // ==================== AUDIO SYSTEM ====================
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let soundEnabled = localStorage.getItem('brunjeweled_sound') !== 'false';
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('brunjeweled_sound', soundEnabled);
+            document.getElementById('sound-toggle').textContent = soundEnabled ? '🔊' : '🔇';
+            if (soundEnabled) {
+                initAudio();
+                playTone(600, 0.1, 'sine', 0.2);
+            }
+        }
+
+        function updateSoundIcon() {
+            document.getElementById('sound-toggle').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        function playTone(frequency, duration, type = 'sine', volume = 0.3) {
+            if (!soundEnabled || !audioCtx) return;
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+
+            gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration);
+        }
+
+        function playSelect() {
+            initAudio();
+            playTone(600, 0.1, 'sine', 0.2);
+        }
+
+        function playSwap() {
+            initAudio();
+            playTone(400, 0.1, 'sine', 0.2);
+            setTimeout(() => playTone(500, 0.1, 'sine', 0.2), 50);
+        }
+
+        function playMatch(cascade = 1) {
+            initAudio();
+            const baseFreq = 400 + (cascade * 100);
+            playTone(baseFreq, 0.15, 'square', 0.12);
+            setTimeout(() => playTone(baseFreq * 1.25, 0.15, 'square', 0.12), 80);
+            setTimeout(() => playTone(baseFreq * 1.5, 0.2, 'square', 0.12), 160);
+        }
+
+        function playInvalid() {
+            initAudio();
+            playTone(200, 0.15, 'sawtooth', 0.15);
+            setTimeout(() => playTone(150, 0.2, 'sawtooth', 0.15), 100);
+        }
+
+        function playLevelUp() {
+            initAudio();
+            [523, 659, 784, 1047].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.2, 'sine', 0.2), i * 100);
+            });
+        }
+
+        function playGameOver() {
+            initAudio();
+            [400, 350, 300, 250].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.3, 'sawtooth', 0.15), i * 150);
+            });
+        }
+
+        function playSpecialCreate() {
+            initAudio();
+            playTone(800, 0.1, 'sine', 0.2);
+            setTimeout(() => playTone(1000, 0.1, 'sine', 0.2), 50);
+            setTimeout(() => playTone(1200, 0.15, 'sine', 0.2), 100);
+        }
+
+        function playFlame() {
+            initAudio();
+            playTone(150, 0.3, 'sawtooth', 0.25);
+            playTone(100, 0.4, 'square', 0.15);
+        }
+
+        function playStar() {
+            initAudio();
+            [600, 800, 1000, 1200, 1000, 800].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.08, 'sawtooth', 0.12), i * 30);
+            });
+        }
+
+        function playHypercube() {
+            initAudio();
+            [400, 500, 600, 800, 1000, 1200].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.15, 'sine', 0.15), i * 50);
+            });
+            setTimeout(() => {
+                playTone(1400, 0.3, 'sine', 0.2);
+                playTone(1400 * 1.5, 0.3, 'sine', 0.15);
+            }, 300);
+        }
+
+        function playTimeBonus() {
+            initAudio();
+            playTone(880, 0.1, 'sine', 0.2);
+            setTimeout(() => playTone(1100, 0.15, 'sine', 0.2), 60);
+        }
+
+        function playHighScore() {
+            initAudio();
+            [523, 659, 784, 880, 1047].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.2, 'sine', 0.2), i * 100);
+            });
+        }
+
+        function playAchievement() {
+            initAudio();
+            [523, 659, 784, 1047, 784, 1047].forEach((freq, i) => {
+                setTimeout(() => playTone(freq, 0.15, 'sine', 0.15), i * 80);
+            });
+        }
+
+        const BOARD_SIZE = 8;
+        // Cat types with natural fur colors and distinct shapes
+        // Each cat has: name, main color, dark shade, light shade, nose color, eye color, shape type
+        const GEM_TYPES = [
+            { name: 'bruno', shape: 'fluffy', fur: '#e88a35', furDark: '#c76820', furLight: '#ffb060', nose: '#ff9090', eyes: '#7cb342' },
+            { name: 'gray', shape: 'diamond', fur: '#7a8694', furDark: '#5a6674', furLight: '#9aa6b4', nose: '#b08090', eyes: '#ffd700' },
+            { name: 'black', shape: 'round', fur: '#3a3a4a', furDark: '#2a2a3a', furLight: '#5a5a6a', nose: '#4a4a5a', eyes: '#ffcc00' },
+            { name: 'cream', shape: 'wide', fur: '#f5e6c8', furDark: '#d4c5a7', furLight: '#fff8e8', nose: '#ffb0a0', eyes: '#5599dd' },
+            { name: 'white', shape: 'triangle', fur: '#fafafa', furDark: '#e0e0e0', furLight: '#ffffff', nose: '#ffb5b5', eyes: '#66aaff' },
+            { name: 'tabby', shape: 'square', fur: '#a67c52', furDark: '#7a5a3a', furLight: '#c69c72', nose: '#8a5a4a', eyes: '#88cc44' },
+            { name: 'calico', shape: 'heart', fur: '#f0c8a0', furDark: '#d09060', furLight: '#fff0e0', nose: '#ff9595', eyes: '#44aa88' }
+        ];
+
+        const HYPERCUBE = { name: 'hypercube', shape: 'magic', special: 'hypercube' };
+
+        let board = [];
+        let selectedTile = null;
+        let score = 0;
+        let level = 1;
+        let goal = 1000;
+        let isAnimating = false;
+        let hintTiles = [];
+
+        // Game mode
+        let gameMode = 'classic';
+        let blitzTime = 60;
+        let timeRemaining = 60;
+        let timerInterval = null;
+        let gameStarted = false;
+
+        // Touch controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTile = null;
+        let isTouching = false;
+        const SWIPE_THRESHOLD = 25;
+
+        // Create cat face SVGs with distinct shapes for each type
+        function createCatSVG(cat) {
+            const id = cat.name + '-' + Math.random().toString(36).substr(2, 9);
+            switch(cat.shape) {
+                case 'fluffy': return createFluffyCat(cat, id);  // Bruno - very fluffy round
+                case 'diamond': return createDiamondCat(cat, id); // Gray - pointed diamond
+                case 'round': return createRoundCat(cat, id);     // Black - round with ears
+                case 'wide': return createWideCat(cat, id);       // Cream - wide Persian
+                case 'triangle': return createTriangleCat(cat, id); // White - triangle Siamese
+                case 'square': return createSquareCat(cat, id);   // Tabby - square with stripes
+                case 'heart': return createHeartCat(cat, id);     // Calico - heart shape
+                default: return createFluffyCat(cat, id);
+            }
+        }
+
+        // Bruno - Fluffy orange cat with magnificent mane (CIRCLE shape)
+        function createFluffyCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <radialGradient id="fur-${id}" cx="50%" cy="40%" r="60%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.fur}"/>
+                        </radialGradient>
+                    </defs>
+                    <!-- Fluffy mane -->
+                    <ellipse cx="50" cy="55" rx="45" ry="42" fill="${cat.furDark}"/>
+                    <ellipse cx="50" cy="52" rx="42" ry="40" fill="url(#fur-${id})"/>
+                    <!-- Fluffy tufts around face -->
+                    <circle cx="20" cy="40" r="12" fill="${cat.furLight}" opacity="0.7"/>
+                    <circle cx="80" cy="40" r="12" fill="${cat.furLight}" opacity="0.7"/>
+                    <circle cx="15" cy="55" r="10" fill="${cat.fur}" opacity="0.8"/>
+                    <circle cx="85" cy="55" r="10" fill="${cat.fur}" opacity="0.8"/>
+                    <circle cx="25" cy="70" r="8" fill="${cat.furDark}" opacity="0.6"/>
+                    <circle cx="75" cy="70" r="8" fill="${cat.furDark}" opacity="0.6"/>
+                    <!-- Inner face -->
+                    <ellipse cx="50" cy="50" rx="30" ry="28" fill="${cat.furLight}"/>
+                    <!-- Ears -->
+                    <polygon points="25,25 35,5 45,28" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="75,25 65,5 55,28" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="30,22 36,12 42,24" fill="#ffccaa" opacity="0.6"/>
+                    <polygon points="70,22 64,12 58,24" fill="#ffccaa" opacity="0.6"/>
+                    <!-- Eyes -->
+                    <ellipse cx="38" cy="45" rx="8" ry="9" fill="white"/>
+                    <ellipse cx="62" cy="45" rx="8" ry="9" fill="white"/>
+                    <ellipse cx="38" cy="45" rx="5" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="62" cy="45" rx="5" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="38" cy="44" rx="2" ry="3" fill="black"/>
+                    <ellipse cx="62" cy="44" rx="2" ry="3" fill="black"/>
+                    <circle cx="36" cy="43" r="1.5" fill="white"/>
+                    <circle cx="60" cy="43" r="1.5" fill="white"/>
+                    <!-- Nose -->
+                    <ellipse cx="50" cy="58" rx="5" ry="4" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,62 Q45,68 42,65" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <path d="M50,62 Q55,68 58,65" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <!-- Whiskers -->
+                    <line x1="30" y1="55" x2="10" y2="52" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="30" y1="60" x2="10" y2="62" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="70" y1="55" x2="90" y2="52" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="70" y1="60" x2="90" y2="62" stroke="${cat.furDark}" stroke-width="0.8"/>
+                </svg>
+            `;
+        }
+
+        // Gray cat - Sleek pointed diamond face (DIAMOND shape)
+        function createDiamondCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="fur-${id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.furDark}"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Diamond shaped face -->
+                    <polygon points="50,8 85,50 50,92 15,50" fill="url(#fur-${id})" stroke="${cat.furDark}" stroke-width="1"/>
+                    <!-- Inner lighter area -->
+                    <polygon points="50,20 72,50 50,80 28,50" fill="${cat.furLight}" opacity="0.5"/>
+                    <!-- Ears (pointed, integrated into diamond) -->
+                    <polygon points="25,35 15,8 40,25" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="75,35 85,8 60,25" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="28,30 22,15 38,26" fill="#d0a0a0" opacity="0.4"/>
+                    <polygon points="72,30 78,15 62,26" fill="#d0a0a0" opacity="0.4"/>
+                    <!-- Eyes (almond shaped) -->
+                    <ellipse cx="38" cy="45" rx="9" ry="7" fill="white"/>
+                    <ellipse cx="62" cy="45" rx="9" ry="7" fill="white"/>
+                    <ellipse cx="38" cy="45" rx="5" ry="5" fill="${cat.eyes}"/>
+                    <ellipse cx="62" cy="45" rx="5" ry="5" fill="${cat.eyes}"/>
+                    <ellipse cx="38" cy="44" rx="2.5" ry="3" fill="black"/>
+                    <ellipse cx="62" cy="44" rx="2.5" ry="3" fill="black"/>
+                    <circle cx="36" cy="43" r="1.5" fill="white"/>
+                    <circle cx="60" cy="43" r="1.5" fill="white"/>
+                    <!-- Nose -->
+                    <polygon points="50,55 46,60 54,60" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,62 Q46,67 43,64" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <path d="M50,62 Q54,67 57,64" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <!-- Whiskers -->
+                    <line x1="32" y1="58" x2="12" y2="55" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="32" y1="62" x2="12" y2="65" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="68" y1="58" x2="88" y2="55" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="68" y1="62" x2="88" y2="65" stroke="${cat.furDark}" stroke-width="0.8"/>
+                </svg>
+            `;
+        }
+
+        // Black cat - Round face with prominent ears (HEXAGON shape)
+        function createRoundCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <radialGradient id="fur-${id}" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.fur}"/>
+                        </radialGradient>
+                    </defs>
+                    <!-- Hexagon-ish round face -->
+                    <polygon points="50,10 85,30 85,70 50,90 15,70 15,30" fill="url(#fur-${id})" stroke="${cat.furDark}" stroke-width="1"/>
+                    <!-- Large pointy ears -->
+                    <polygon points="20,30 8,2 42,22" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="80,30 92,2 58,22" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="22,26 15,10 38,22" fill="${cat.furLight}" opacity="0.3"/>
+                    <polygon points="78,26 85,10 62,22" fill="${cat.furLight}" opacity="0.3"/>
+                    <!-- Large glowing eyes -->
+                    <ellipse cx="36" cy="48" rx="10" ry="11" fill="${cat.eyes}"/>
+                    <ellipse cx="64" cy="48" rx="10" ry="11" fill="${cat.eyes}"/>
+                    <ellipse cx="36" cy="48" rx="4" ry="8" fill="black"/>
+                    <ellipse cx="64" cy="48" rx="4" ry="8" fill="black"/>
+                    <circle cx="33" cy="45" r="2" fill="white"/>
+                    <circle cx="61" cy="45" r="2" fill="white"/>
+                    <!-- Small nose -->
+                    <ellipse cx="50" cy="62" rx="4" ry="3" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,65 Q46,70 44,68" stroke="${cat.furLight}" stroke-width="1" fill="none"/>
+                    <path d="M50,65 Q54,70 56,68" stroke="${cat.furLight}" stroke-width="1" fill="none"/>
+                    <!-- Whiskers -->
+                    <line x1="30" y1="60" x2="8" y2="55" stroke="${cat.furLight}" stroke-width="0.8" opacity="0.6"/>
+                    <line x1="30" y1="65" x2="8" y2="68" stroke="${cat.furLight}" stroke-width="0.8" opacity="0.6"/>
+                    <line x1="70" y1="60" x2="92" y2="55" stroke="${cat.furLight}" stroke-width="0.8" opacity="0.6"/>
+                    <line x1="70" y1="65" x2="92" y2="68" stroke="${cat.furLight}" stroke-width="0.8" opacity="0.6"/>
+                </svg>
+            `;
+        }
+
+        // Cream Persian - Wide square face (WIDE/SQUARE shape)
+        function createWideCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <radialGradient id="fur-${id}" cx="50%" cy="40%" r="60%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.fur}"/>
+                        </radialGradient>
+                    </defs>
+                    <!-- Wide rectangular face -->
+                    <rect x="8" y="18" width="84" height="72" rx="20" ry="25" fill="url(#fur-${id})" stroke="${cat.furDark}" stroke-width="1"/>
+                    <!-- Fluffy cheeks -->
+                    <ellipse cx="20" cy="55" rx="15" ry="18" fill="${cat.furLight}" opacity="0.6"/>
+                    <ellipse cx="80" cy="55" rx="15" ry="18" fill="${cat.furLight}" opacity="0.6"/>
+                    <!-- Small rounded ears -->
+                    <ellipse cx="22" cy="22" rx="12" ry="14" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <ellipse cx="78" cy="22" rx="12" ry="14" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <ellipse cx="22" cy="22" rx="6" ry="8" fill="#ffccbb" opacity="0.4"/>
+                    <ellipse cx="78" cy="22" rx="6" ry="8" fill="#ffccbb" opacity="0.4"/>
+                    <!-- Big round eyes -->
+                    <circle cx="35" cy="48" r="11" fill="white"/>
+                    <circle cx="65" cy="48" r="11" fill="white"/>
+                    <circle cx="35" cy="48" r="7" fill="${cat.eyes}"/>
+                    <circle cx="65" cy="48" r="7" fill="${cat.eyes}"/>
+                    <circle cx="35" cy="47" r="3" fill="black"/>
+                    <circle cx="65" cy="47" r="3" fill="black"/>
+                    <circle cx="33" cy="45" r="2" fill="white"/>
+                    <circle cx="63" cy="45" r="2" fill="white"/>
+                    <!-- Flat nose -->
+                    <ellipse cx="50" cy="62" rx="6" ry="4" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,66 Q45,72 40,70" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <path d="M50,66 Q55,72 60,70" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <!-- Short whiskers -->
+                    <line x1="32" y1="62" x2="15" y2="60" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="32" y1="66" x2="15" y2="70" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="68" y1="62" x2="85" y2="60" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="68" y1="66" x2="85" y2="70" stroke="${cat.furDark}" stroke-width="0.8"/>
+                </svg>
+            `;
+        }
+
+        // White Siamese-style - Triangle face (TRIANGLE shape)
+        function createTriangleCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="fur-${id}" x1="50%" y1="0%" x2="50%" y2="100%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.furDark}"/>
+                        </linearGradient>
+                    </defs>
+                    <!-- Triangle face pointing down -->
+                    <polygon points="50,5 95,35 50,95 5,35" fill="url(#fur-${id})" stroke="${cat.furDark}" stroke-width="1"/>
+                    <!-- Tall pointed ears -->
+                    <polygon points="15,35 5,5 35,25" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="85,35 95,5 65,25" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="17,30 12,12 32,25" fill="#ffd0d0" opacity="0.5"/>
+                    <polygon points="83,30 88,12 68,25" fill="#ffd0d0" opacity="0.5"/>
+                    <!-- Almond eyes -->
+                    <ellipse cx="35" cy="45" rx="10" ry="8" fill="white"/>
+                    <ellipse cx="65" cy="45" rx="10" ry="8" fill="white"/>
+                    <ellipse cx="35" cy="45" rx="6" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="65" cy="45" rx="6" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="35" cy="44" rx="2.5" ry="3.5" fill="black"/>
+                    <ellipse cx="65" cy="44" rx="2.5" ry="3.5" fill="black"/>
+                    <circle cx="33" cy="43" r="1.5" fill="white"/>
+                    <circle cx="63" cy="43" r="1.5" fill="white"/>
+                    <!-- Dainty nose -->
+                    <polygon points="50,58 47,63 53,63" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,65 Q47,70 44,68" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <path d="M50,65 Q53,70 56,68" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <!-- Long whiskers -->
+                    <line x1="32" y1="60" x2="8" y2="55" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="32" y1="65" x2="8" y2="68" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="68" y1="60" x2="92" y2="55" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="68" y1="65" x2="92" y2="68" stroke="${cat.furDark}" stroke-width="0.8"/>
+                </svg>
+            `;
+        }
+
+        // Tabby - Square face with stripes (OCTAGON shape)
+        function createSquareCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <radialGradient id="fur-${id}" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.fur}"/>
+                        </radialGradient>
+                    </defs>
+                    <!-- Octagon face -->
+                    <polygon points="30,10 70,10 90,30 90,70 70,90 30,90 10,70 10,30" fill="url(#fur-${id})" stroke="${cat.furDark}" stroke-width="1"/>
+                    <!-- Tabby stripes -->
+                    <path d="M50,10 L50,25" stroke="${cat.furDark}" stroke-width="3" opacity="0.6"/>
+                    <path d="M35,12 L38,22" stroke="${cat.furDark}" stroke-width="2" opacity="0.5"/>
+                    <path d="M65,12 L62,22" stroke="${cat.furDark}" stroke-width="2" opacity="0.5"/>
+                    <path d="M50,28 L50,38" stroke="${cat.furDark}" stroke-width="2" opacity="0.4"/>
+                    <!-- Square ears -->
+                    <polygon points="18,28 12,5 38,12 32,28" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="82,28 88,5 62,12 68,28" fill="${cat.fur}" stroke="${cat.furDark}" stroke-width="1"/>
+                    <polygon points="20,22 18,12 32,16 30,25" fill="#c09080" opacity="0.4"/>
+                    <polygon points="80,22 82,12 68,16 70,25" fill="#c09080" opacity="0.4"/>
+                    <!-- Eyes -->
+                    <ellipse cx="36" cy="48" rx="9" ry="10" fill="white"/>
+                    <ellipse cx="64" cy="48" rx="9" ry="10" fill="white"/>
+                    <ellipse cx="36" cy="48" rx="5" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="64" cy="48" rx="5" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="36" cy="47" rx="2" ry="3" fill="black"/>
+                    <ellipse cx="64" cy="47" rx="2" ry="3" fill="black"/>
+                    <circle cx="34" cy="45" r="1.5" fill="white"/>
+                    <circle cx="62" cy="45" r="1.5" fill="white"/>
+                    <!-- M marking on forehead -->
+                    <path d="M38,35 L45,28 L50,35 L55,28 L62,35" stroke="${cat.furDark}" stroke-width="2" fill="none" opacity="0.7"/>
+                    <!-- Nose -->
+                    <ellipse cx="50" cy="60" rx="5" ry="4" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,64 Q46,70 42,67" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <path d="M50,64 Q54,70 58,67" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <!-- Whiskers -->
+                    <line x1="30" y1="58" x2="8" y2="54" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="30" y1="64" x2="8" y2="68" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="70" y1="58" x2="92" y2="54" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="70" y1="64" x2="92" y2="68" stroke="${cat.furDark}" stroke-width="0.8"/>
+                </svg>
+            `;
+        }
+
+        // Calico - Heart shaped face with patches (HEART shape)
+        function createHeartCat(cat, id) {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <radialGradient id="fur-${id}" cx="50%" cy="40%" r="60%">
+                            <stop offset="0%" style="stop-color:${cat.furLight}"/>
+                            <stop offset="100%" style="stop-color:${cat.fur}"/>
+                        </radialGradient>
+                    </defs>
+                    <!-- Heart shaped face -->
+                    <path d="M50,90 C20,70 5,45 5,30 C5,15 20,5 35,5 C42,5 48,10 50,15 C52,10 58,5 65,5 C80,5 95,15 95,30 C95,45 80,70 50,90" fill="url(#fur-${id})" stroke="${cat.furDark}" stroke-width="1"/>
+                    <!-- Calico patches -->
+                    <ellipse cx="25" cy="35" rx="12" ry="15" fill="#d08040" opacity="0.6"/>
+                    <ellipse cx="70" cy="55" rx="10" ry="12" fill="#4a4a4a" opacity="0.5"/>
+                    <ellipse cx="55" cy="25" rx="8" ry="10" fill="#d08040" opacity="0.4"/>
+                    <!-- Ears (part of heart top) -->
+                    <ellipse cx="28" cy="12" rx="10" ry="12" fill="${cat.fur}"/>
+                    <ellipse cx="72" cy="12" rx="10" ry="12" fill="${cat.fur}"/>
+                    <ellipse cx="28" cy="12" rx="5" ry="7" fill="#ffccbb" opacity="0.4"/>
+                    <ellipse cx="72" cy="12" rx="5" ry="7" fill="#ffccbb" opacity="0.4"/>
+                    <!-- Eyes -->
+                    <ellipse cx="35" cy="42" rx="9" ry="10" fill="white"/>
+                    <ellipse cx="65" cy="42" rx="9" ry="10" fill="white"/>
+                    <ellipse cx="35" cy="42" rx="5" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="65" cy="42" rx="5" ry="6" fill="${cat.eyes}"/>
+                    <ellipse cx="35" cy="41" rx="2" ry="3" fill="black"/>
+                    <ellipse cx="65" cy="41" rx="2" ry="3" fill="black"/>
+                    <circle cx="33" cy="40" r="1.5" fill="white"/>
+                    <circle cx="63" cy="40" r="1.5" fill="white"/>
+                    <!-- Pink nose -->
+                    <ellipse cx="50" cy="55" rx="5" ry="4" fill="${cat.nose}"/>
+                    <!-- Mouth -->
+                    <path d="M50,59 Q46,65 42,62" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <path d="M50,59 Q54,65 58,62" stroke="${cat.furDark}" stroke-width="1.5" fill="none"/>
+                    <!-- Whiskers -->
+                    <line x1="30" y1="52" x2="10" y2="48" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="30" y1="58" x2="10" y2="62" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="70" y1="52" x2="90" y2="48" stroke="${cat.furDark}" stroke-width="0.8"/>
+                    <line x1="70" y1="58" x2="90" y2="62" stroke="${cat.furDark}" stroke-width="0.8"/>
+                </svg>
+            `;
+        }
+
+        // Magic rainbow cat for hypercube
+        function createHypercubeSVG() {
+            return `
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="rainbow-fur" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#ff6b6b"/>
+                            <stop offset="25%" style="stop-color:#ffd93d"/>
+                            <stop offset="50%" style="stop-color:#6bcb77"/>
+                            <stop offset="75%" style="stop-color:#4d96ff"/>
+                            <stop offset="100%" style="stop-color:#9b59b6"/>
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <!-- Star-shaped magical cat -->
+                    <polygon points="50,5 61,35 95,35 68,55 79,90 50,70 21,90 32,55 5,35 39,35" fill="url(#rainbow-fur)" stroke="#fff" stroke-width="2" filter="url(#glow)"/>
+                    <!-- Inner face -->
+                    <circle cx="50" cy="50" r="22" fill="white" opacity="0.9"/>
+                    <!-- Sparkle ears -->
+                    <polygon points="35,32 30,18 45,28" fill="#ffaaff"/>
+                    <polygon points="65,32 70,18 55,28" fill="#aaffff"/>
+                    <!-- Starry eyes -->
+                    <circle cx="42" cy="48" r="6" fill="#ff69b4"/>
+                    <circle cx="58" cy="48" r="6" fill="#00bfff"/>
+                    <polygon points="42,48 44,45 46,48 44,51" fill="white"/>
+                    <polygon points="58,48 60,45 62,48 60,51" fill="white"/>
+                    <!-- Sparkle nose -->
+                    <polygon points="50,56 48,60 52,60" fill="#ff99cc"/>
+                    <!-- Magical whiskers with stars -->
+                    <line x1="35" y1="55" x2="20" y2="52" stroke="#ffdd00" stroke-width="1"/>
+                    <line x1="35" y1="60" x2="20" y2="63" stroke="#ff69b4" stroke-width="1"/>
+                    <line x1="65" y1="55" x2="80" y2="52" stroke="#00ffff" stroke-width="1"/>
+                    <line x1="65" y1="60" x2="80" y2="63" stroke="#9b59b6" stroke-width="1"/>
+                    <!-- Sparkles -->
+                    <polygon points="15,42 17,40 19,42 17,44" fill="#ffff00"/>
+                    <polygon points="85,42 87,40 89,42 87,44" fill="#ff00ff"/>
+                    <polygon points="50,18 52,15 54,18 52,21" fill="#00ffff"/>
+                </svg>
+            `;
+        }
+
+        function init() {
+            createBoard();
+            removeInitialMatches();
+            renderBoard();
+            if (!hasValidMoves()) {
+                init();
+            }
+        }
+
+        function createBoard() {
+            board = [];
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                board[row] = [];
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    board[row][col] = getRandomGem();
+                }
+            }
+        }
+
+        function removeInitialMatches() {
+            let hasMatches = true;
+            while (hasMatches) {
+                const matches = findMatches();
+                if (matches.length > 0) {
+                    matches.forEach(m => {
+                        board[m.row][m.col] = getRandomGem();
+                    });
+                } else {
+                    hasMatches = false;
+                }
+            }
+        }
+
+        function getRandomGem() {
+            const gem = GEM_TYPES[Math.floor(Math.random() * GEM_TYPES.length)];
+            return { ...gem, special: null };
+        }
+
+        function renderBoard() {
+            const gameBoard = document.getElementById('game-board');
+            gameBoard.innerHTML = '';
+
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+
+                    const gemData = board[row][col];
+                    const gem = document.createElement('div');
+                    gem.className = `gem gem-${gemData.name}`;
+
+                    if (gemData.special === 'flame') gem.classList.add('flame-gem');
+                    else if (gemData.special === 'star') gem.classList.add('star-gem');
+                    else if (gemData.special === 'hypercube') gem.classList.add('hypercube');
+
+                    gem.innerHTML = gemData.special === 'hypercube' ? createHypercubeSVG() : createCatSVG(gemData);
+
+                    gem.dataset.row = row;
+                    gem.dataset.col = col;
+                    gem.addEventListener('click', () => handleGemClick(row, col));
+                    gem.addEventListener('touchstart', (e) => handleTouchStart(e, row, col), { passive: false });
+                    gem.addEventListener('touchmove', (e) => handleTouchMove(e), { passive: false });
+                    gem.addEventListener('touchend', (e) => handleTouchEnd(e), { passive: false });
+
+                    cell.appendChild(gem);
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        async function handleGemClick(row, col) {
+            if (isAnimating) return;
+
+            if (gameMode === 'blitz' && !gameStarted && !timerInterval) {
+                isAnimating = true;
+                await startBlitzCountdown();
+                isAnimating = false;
+            }
+
+            if (gameMode === 'blitz' && !gameStarted && timerInterval === null) return;
+
+            clearHints();
+            const clicked = { row, col };
+
+            if (!selectedTile) {
+                selectedTile = clicked;
+                highlightGem(row, col);
+                haptic('light');
+                playSelect();
+            } else {
+                if (selectedTile.row === row && selectedTile.col === col) {
+                    clearSelection();
+                    selectedTile = null;
+                } else if (isAdjacent(selectedTile, clicked)) {
+                    haptic('medium');
+                    playSwap();
+                    swapGems(selectedTile, clicked);
+                } else {
+                    clearSelection();
+                    selectedTile = clicked;
+                    highlightGem(row, col);
+                    haptic('light');
+                    playSelect();
+                }
+            }
+        }
+
+        function handleTouchStart(e, row, col) {
+            if (isAnimating) return;
+            e.preventDefault();
+
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchStartTile = { row, col };
+            isTouching = true;
+
+            const gem = e.target.closest('.gem');
+            if (gem) gem.classList.add('touching');
+        }
+
+        function handleTouchMove(e) {
+            if (!isTouching || !touchStartTile) return;
+            e.preventDefault();
+        }
+
+        async function handleTouchEnd(e) {
+            if (!isTouching || !touchStartTile) return;
+            e.preventDefault();
+
+            document.querySelectorAll('.gem.touching').forEach(g => g.classList.remove('touching'));
+
+            const touch = e.changedTouches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const absDeltaX = Math.abs(deltaX);
+            const absDeltaY = Math.abs(deltaY);
+
+            if (absDeltaX < SWIPE_THRESHOLD && absDeltaY < SWIPE_THRESHOLD) {
+                isTouching = false;
+                await handleGemClick(touchStartTile.row, touchStartTile.col);
+                touchStartTile = null;
+                return;
+            }
+
+            let targetTile = null;
+
+            if (absDeltaX > absDeltaY) {
+                if (deltaX > SWIPE_THRESHOLD && touchStartTile.col < BOARD_SIZE - 1) {
+                    targetTile = { row: touchStartTile.row, col: touchStartTile.col + 1 };
+                } else if (deltaX < -SWIPE_THRESHOLD && touchStartTile.col > 0) {
+                    targetTile = { row: touchStartTile.row, col: touchStartTile.col - 1 };
+                }
+            } else {
+                if (deltaY > SWIPE_THRESHOLD && touchStartTile.row < BOARD_SIZE - 1) {
+                    targetTile = { row: touchStartTile.row + 1, col: touchStartTile.col };
+                } else if (deltaY < -SWIPE_THRESHOLD && touchStartTile.row > 0) {
+                    targetTile = { row: touchStartTile.row - 1, col: touchStartTile.col };
+                }
+            }
+
+            if (targetTile && !isAnimating) {
+                if (gameMode === 'blitz' && !gameStarted && !timerInterval) {
+                    isAnimating = true;
+                    await startBlitzCountdown();
+                    isAnimating = false;
+                }
+
+                if (gameMode === 'blitz' && !gameStarted && timerInterval === null) {
+                    isTouching = false;
+                    touchStartTile = null;
+                    return;
+                }
+
+                clearSelection();
+                clearHints();
+                selectedTile = null;
+                haptic('medium');
+                playSwap();
+                createSwipeIndicator(touchStartTile.row, touchStartTile.col);
+                await swapGems(touchStartTile, targetTile);
+            }
+
+            isTouching = false;
+            touchStartTile = null;
+        }
+
+        function createSwipeIndicator(row, col) {
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / BOARD_SIZE;
+
+            const indicator = document.createElement('div');
+            indicator.className = 'swipe-indicator';
+            indicator.style.left = (rect.left + col * cellSize + cellSize / 2 - 15) + 'px';
+            indicator.style.top = (rect.top + row * cellSize + cellSize / 2 - 15) + 'px';
+            document.body.appendChild(indicator);
+            setTimeout(() => indicator.remove(), 400);
+        }
+
+        function isAdjacent(t1, t2) {
+            const rowDiff = Math.abs(t1.row - t2.row);
+            const colDiff = Math.abs(t1.col - t2.col);
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+
+        function highlightGem(row, col) {
+            const gems = document.querySelectorAll('.gem');
+            gems[row * BOARD_SIZE + col].classList.add('selected');
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('.gem.selected').forEach(g => g.classList.remove('selected'));
+        }
+
+        function clearHints() {
+            document.querySelectorAll('.gem.hint').forEach(g => g.classList.remove('hint'));
+            hintTiles = [];
+        }
+
+        async function swapGems(t1, t2) {
+            isAnimating = true;
+            clearSelection();
+
+            const gem1 = board[t1.row][t1.col];
+            const gem2 = board[t2.row][t2.col];
+
+            // Hypercube swap
+            if (gem1.special === 'hypercube' || gem2.special === 'hypercube') {
+                const hypercubePos = gem1.special === 'hypercube' ? t1 : t2;
+                const targetGem = gem1.special === 'hypercube' ? gem2 : gem1;
+
+                await activateHypercube(hypercubePos, targetGem.name);
+                await processMatches();
+                checkLevelUp();
+
+                if (!hasValidMoves()) gameOver();
+                selectedTile = null;
+                isAnimating = false;
+                return;
+            }
+
+            // Normal swap
+            const temp = board[t1.row][t1.col];
+            board[t1.row][t1.col] = board[t2.row][t2.col];
+            board[t2.row][t2.col] = temp;
+
+            renderBoard();
+
+            const matches = findMatches();
+            if (matches.length > 0) {
+                await processMatches(t1, t2);
+                checkLevelUp();
+                if (!hasValidMoves()) gameOver();
+            } else {
+                await sleep(150);
+                haptic('error');
+                playInvalid();
+                // Swap back
+                const temp = board[t1.row][t1.col];
+                board[t1.row][t1.col] = board[t2.row][t2.col];
+                board[t2.row][t2.col] = temp;
+                renderBoard();
+            }
+
+            selectedTile = null;
+            isAnimating = false;
+        }
+
+        async function activateHypercube(pos, targetColor) {
+            haptic('heavy');
+            playHypercube();
+
+            const targets = [];
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col].name === targetColor) {
+                        targets.push({ row, col });
+                    }
+                }
+            }
+            targets.push(pos);
+
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            targets.forEach(t => createLightning(rect, pos, t));
+
+            await sleep(300);
+
+            const gems = document.querySelectorAll('.gem');
+            targets.forEach(t => {
+                gems[t.row * BOARD_SIZE + t.col].classList.add('matched');
+            });
+
+            const points = targets.length * 20;
+            score += points;
+            document.getElementById('score').textContent = score;
+            showScorePopup(points, pos.row, pos.col);
+
+            await sleep(400);
+
+            targets.forEach(t => {
+                board[t.row][t.col] = null;
+            });
+
+            dropGems();
+            fillBoard();
+            renderBoard();
+        }
+
+        function createLightning(boardRect, from, to) {
+            const cellSize = boardRect.width / BOARD_SIZE;
+            const x1 = boardRect.left + (from.col * cellSize) + cellSize / 2;
+            const y1 = boardRect.top + (from.row * cellSize) + cellSize / 2;
+            const x2 = boardRect.left + (to.col * cellSize) + cellSize / 2;
+            const y2 = boardRect.top + (to.row * cellSize) + cellSize / 2;
+
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+            const lightning = document.createElement('div');
+            lightning.className = 'lightning';
+            lightning.style.width = length + 'px';
+            lightning.style.height = '3px';
+            lightning.style.left = x1 + 'px';
+            lightning.style.top = y1 + 'px';
+            lightning.style.transformOrigin = '0 50%';
+            lightning.style.transform = `rotate(${angle}deg)`;
+
+            document.body.appendChild(lightning);
+            setTimeout(() => lightning.remove(), 300);
+        }
+
+        function findMatches() {
+            const matches = new Set();
+            const matchGroups = [];
+
+            // Horizontal
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                let col = 0;
+                while (col < BOARD_SIZE) {
+                    const gem = board[row][col];
+                    if (!gem) { col++; continue; }
+
+                    let matchLen = 1;
+                    while (col + matchLen < BOARD_SIZE && board[row][col + matchLen]?.name === gem.name) {
+                        matchLen++;
+                    }
+
+                    if (matchLen >= 3) {
+                        const group = { type: 'horizontal', color: gem.name, length: matchLen, positions: [] };
+                        for (let i = 0; i < matchLen; i++) {
+                            matches.add(`${row},${col + i}`);
+                            group.positions.push({ row, col: col + i });
+                        }
+                        matchGroups.push(group);
+                    }
+                    col += Math.max(matchLen, 1);
+                }
+            }
+
+            // Vertical
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                let row = 0;
+                while (row < BOARD_SIZE) {
+                    const gem = board[row][col];
+                    if (!gem) { row++; continue; }
+
+                    let matchLen = 1;
+                    while (row + matchLen < BOARD_SIZE && board[row + matchLen]?.[col]?.name === gem.name) {
+                        matchLen++;
+                    }
+
+                    if (matchLen >= 3) {
+                        const group = { type: 'vertical', color: gem.name, length: matchLen, positions: [] };
+                        for (let i = 0; i < matchLen; i++) {
+                            matches.add(`${row + i},${col}`);
+                            group.positions.push({ row: row + i, col });
+                        }
+                        matchGroups.push(group);
+                    }
+                    row += Math.max(matchLen, 1);
+                }
+            }
+
+            const result = Array.from(matches).map(m => {
+                const [row, col] = m.split(',').map(Number);
+                return { row, col };
+            });
+            result.matchGroups = matchGroups;
+            return result;
+        }
+
+        function detectSpecialGems(matchGroups, swappedTiles) {
+            const specials = [];
+
+            // L/T shapes
+            for (let i = 0; i < matchGroups.length; i++) {
+                for (let j = i + 1; j < matchGroups.length; j++) {
+                    const g1 = matchGroups[i];
+                    const g2 = matchGroups[j];
+
+                    if (g1.color !== g2.color || g1.type === g2.type) continue;
+
+                    for (const p1 of g1.positions) {
+                        for (const p2 of g2.positions) {
+                            if (p1.row === p2.row && p1.col === p2.col) {
+                                specials.push({ type: 'star', row: p1.row, col: p1.col, color: g1.color });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 5+ matches (hypercube) and 4 matches (flame)
+            for (const group of matchGroups) {
+                const isPartOfLT = specials.some(s =>
+                    group.positions.some(p => p.row === s.row && p.col === s.col)
+                );
+
+                if (group.length >= 5 && !isPartOfLT) {
+                    let pos = group.positions[Math.floor(group.length / 2)];
+                    if (swappedTiles) {
+                        const swapInGroup = group.positions.find(p =>
+                            (p.row === swappedTiles[0].row && p.col === swappedTiles[0].col) ||
+                            (p.row === swappedTiles[1].row && p.col === swappedTiles[1].col)
+                        );
+                        if (swapInGroup) pos = swapInGroup;
+                    }
+                    specials.push({ type: 'hypercube', row: pos.row, col: pos.col, color: group.color });
+                } else if (group.length === 4 && !isPartOfLT) {
+                    let pos = group.positions[Math.floor(group.length / 2)];
+                    if (swappedTiles) {
+                        const swapInGroup = group.positions.find(p =>
+                            (p.row === swappedTiles[0].row && p.col === swappedTiles[0].col) ||
+                            (p.row === swappedTiles[1].row && p.col === swappedTiles[1].col)
+                        );
+                        if (swapInGroup) pos = swapInGroup;
+                    }
+                    specials.push({ type: 'flame', row: pos.row, col: pos.col, color: group.color });
+                }
+            }
+
+            return specials;
+        }
+
+        async function processMatches(t1 = null, t2 = null) {
+            let cascade = 0;
+            const swappedTiles = (t1 && t2) ? [t1, t2] : null;
+            let isFirstMatch = true;
+
+            while (true) {
+                const matches = findMatches();
+                if (matches.length === 0) break;
+
+                cascade++;
+
+                // Track stats for achievements
+                updateStat('totalMatches', 1);
+                updateStat('totalGemsMatched', matches.length);
+                updateStat('maxCascade', cascade, true);
+
+                // Activate special gems
+                const specialsToActivate = [];
+                matches.forEach(m => {
+                    const gem = board[m.row][m.col];
+                    if (gem && gem.special && gem.special !== 'hypercube') {
+                        specialsToActivate.push({ ...m, special: gem.special, color: gem.name });
+                    }
+                });
+
+                // Detect new special gems
+                const newSpecials = detectSpecialGems(matches.matchGroups || [], isFirstMatch ? swappedTiles : null);
+                isFirstMatch = false;
+
+                // Track special gem creation for achievements
+                newSpecials.forEach(s => {
+                    if (s.type === 'flame') updateStat('flameGemsCreated', 1);
+                    else if (s.type === 'star') updateStat('starGemsCreated', 1);
+                    else if (s.type === 'hypercube') updateStat('hypercubesCreated', 1);
+                });
+
+                // Play special gem creation sound
+                if (newSpecials.length > 0) {
+                    playSpecialCreate();
+                }
+
+                const basePoints = matches.length * 10;
+                const cascadeBonus = cascade > 1 ? cascade * 50 : 0;
+                const points = basePoints + cascadeBonus;
+                score += points;
+
+                document.getElementById('score').textContent = score;
+
+                playMatch(cascade);
+
+                if (cascade > 1) {
+                    haptic('success');
+                    showCascadeText(cascade);
+                } else {
+                    haptic('medium');
+                }
+
+                // Blitz time bonus
+                if (gameMode === 'blitz' && gameStarted) {
+                    let timeBonus = 0;
+                    if (matches.length >= 5) timeBonus = 3;
+                    else if (matches.length >= 4) timeBonus = 2;
+                    else if (cascade > 1) timeBonus = 1;
+
+                    if (timeBonus > 0) {
+                        timeRemaining = Math.min(timeRemaining + timeBonus, blitzTime + 30);
+                        updateTimerDisplay();
+                        showTimeBonus(timeBonus);
+                        playTimeBonus();
+                    }
+                }
+
+                const gems = document.querySelectorAll('.gem');
+                matches.forEach(m => {
+                    gems[m.row * BOARD_SIZE + m.col].classList.add('matched');
+                });
+
+                // Show score popup
+                if (matches.length > 0) {
+                    const midMatch = matches[Math.floor(matches.length / 2)];
+                    showScorePopup(points, midMatch.row, midMatch.col);
+                }
+
+                await sleep(350);
+
+                // Activate specials
+                for (const special of specialsToActivate) {
+                    if (special.special === 'flame') {
+                        await activateFlameGem(special);
+                    } else if (special.special === 'star') {
+                        await activateStarGem(special);
+                    }
+                }
+
+                // Remove matched gems
+                matches.forEach(m => {
+                    board[m.row][m.col] = null;
+                });
+
+                // Create new special gems
+                for (const s of newSpecials) {
+                    const gemType = GEM_TYPES.find(g => g.name === s.color) || GEM_TYPES[0];
+                    if (s.type === 'hypercube') {
+                        board[s.row][s.col] = { ...HYPERCUBE };
+                    } else {
+                        board[s.row][s.col] = { ...gemType, special: s.type };
+                    }
+                }
+
+                dropGems();
+                fillBoard();
+                renderBoard();
+
+                await sleep(200);
+            }
+        }
+
+        async function activateFlameGem(pos) {
+            haptic('heavy');
+            playFlame();
+            const targets = [];
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const nr = pos.row + dr;
+                    const nc = pos.col + dc;
+                    if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc]) {
+                        targets.push({ row: nr, col: nc });
+                    }
+                }
+            }
+
+            createExplosion(pos.row, pos.col, '#ff6600');
+
+            const gems = document.querySelectorAll('.gem');
+            targets.forEach(t => {
+                gems[t.row * BOARD_SIZE + t.col].classList.add('matched');
+            });
+
+            await sleep(300);
+
+            targets.forEach(t => {
+                board[t.row][t.col] = null;
+            });
+
+            const points = targets.length * 15;
+            score += points;
+            document.getElementById('score').textContent = score;
+        }
+
+        async function activateStarGem(pos) {
+            haptic('heavy');
+            playStar();
+            const targets = [];
+
+            // Row
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (board[pos.row][c]) targets.push({ row: pos.row, col: c });
+            }
+            // Column
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                if (board[r][pos.col] && r !== pos.row) targets.push({ row: r, col: pos.col });
+            }
+
+            createExplosion(pos.row, pos.col, '#ffff00');
+
+            const gems = document.querySelectorAll('.gem');
+            targets.forEach(t => {
+                gems[t.row * BOARD_SIZE + t.col].classList.add('matched');
+            });
+
+            await sleep(300);
+
+            targets.forEach(t => {
+                board[t.row][t.col] = null;
+            });
+
+            const points = targets.length * 15;
+            score += points;
+            document.getElementById('score').textContent = score;
+        }
+
+        function createExplosion(row, col, color) {
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / BOARD_SIZE;
+
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.width = '40px';
+            explosion.style.height = '40px';
+            explosion.style.left = (rect.left + col * cellSize + cellSize / 2 - 20) + 'px';
+            explosion.style.top = (rect.top + row * cellSize + cellSize / 2 - 20) + 'px';
+            explosion.style.background = `radial-gradient(circle, ${color}, transparent)`;
+            document.body.appendChild(explosion);
+            setTimeout(() => explosion.remove(), 500);
+        }
+
+        function dropGems() {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                let emptyRow = BOARD_SIZE - 1;
+                for (let row = BOARD_SIZE - 1; row >= 0; row--) {
+                    if (board[row][col] !== null) {
+                        if (row !== emptyRow) {
+                            board[emptyRow][col] = board[row][col];
+                            board[row][col] = null;
+                        }
+                        emptyRow--;
+                    }
+                }
+            }
+        }
+
+        function fillBoard() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col] === null) {
+                        board[row][col] = getRandomGem();
+                    }
+                }
+            }
+        }
+
+        function showScorePopup(points, row, col) {
+            const boardEl = document.getElementById('game-board');
+            const rect = boardEl.getBoundingClientRect();
+            const cellSize = rect.width / BOARD_SIZE;
+
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = '+' + points;
+            popup.style.left = (rect.left + col * cellSize + cellSize / 2) + 'px';
+            popup.style.top = (rect.top + row * cellSize) + 'px';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function showTimeBonus(seconds) {
+            const popup = document.createElement('div');
+            popup.className = 'time-bonus';
+            popup.textContent = '+' + seconds + 's';
+            popup.style.left = '50%';
+            popup.style.top = '20%';
+            popup.style.transform = 'translateX(-50%)';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 1000);
+        }
+
+        function showCascadeText(cascade) {
+            const text = document.createElement('div');
+            text.className = 'cascade-text';
+            text.textContent = cascade + 'x CASCADE!';
+            text.style.left = '50%';
+            text.style.top = '50%';
+            document.body.appendChild(text);
+            setTimeout(() => text.remove(), 1200);
+        }
+
+        function hasValidMoves() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    // Check right swap
+                    if (col < BOARD_SIZE - 1) {
+                        swap(row, col, row, col + 1);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row, col + 1);
+                            return true;
+                        }
+                        swap(row, col, row, col + 1);
+                    }
+                    // Check down swap
+                    if (row < BOARD_SIZE - 1) {
+                        swap(row, col, row + 1, col);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row + 1, col);
+                            return true;
+                        }
+                        swap(row, col, row + 1, col);
+                    }
+                }
+            }
+            return false;
+        }
+
+        function swap(r1, c1, r2, c2) {
+            const temp = board[r1][c1];
+            board[r1][c1] = board[r2][c2];
+            board[r2][c2] = temp;
+        }
+
+        function findHintMove() {
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (col < BOARD_SIZE - 1) {
+                        swap(row, col, row, col + 1);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row, col + 1);
+                            return [{ row, col }, { row, col: col + 1 }];
+                        }
+                        swap(row, col, row, col + 1);
+                    }
+                    if (row < BOARD_SIZE - 1) {
+                        swap(row, col, row + 1, col);
+                        if (findMatches().length > 0) {
+                            swap(row, col, row + 1, col);
+                            return [{ row, col }, { row: row + 1, col }];
+                        }
+                        swap(row, col, row + 1, col);
+                    }
+                }
+            }
+            return null;
+        }
+
+        function showHint() {
+            if (isAnimating) return;
+            clearHints();
+            haptic('light');
+
+            const hint = findHintMove();
+            if (hint) {
+                hintTiles = hint;
+                const gems = document.querySelectorAll('.gem');
+                hint.forEach(t => {
+                    gems[t.row * BOARD_SIZE + t.col].classList.add('hint');
+                });
+            }
+        }
+
+        function checkLevelUp() {
+            if (gameMode !== 'classic') return;
+
+            if (score >= goal) {
+                level++;
+                goal = level * 1000 + (level - 1) * 500;
+                document.getElementById('level').textContent = level;
+                document.getElementById('goal').textContent = goal;
+                haptic('success');
+                playLevelUp();
+                updateStat('highestLevel', level, true);
+            }
+        }
+
+        function setMode(mode) {
+            if (isAnimating) return;
+            gameMode = mode;
+
+            document.getElementById('mode-classic').classList.toggle('active', mode === 'classic');
+            document.getElementById('mode-blitz').classList.toggle('active', mode === 'blitz');
+
+            document.getElementById('timer-display').classList.toggle('active', mode === 'blitz');
+            document.getElementById('timer-bar').classList.toggle('active', mode === 'blitz');
+            document.getElementById('level-container').style.display = mode === 'classic' ? 'block' : 'none';
+            document.getElementById('goal-container').style.display = mode === 'classic' ? 'block' : 'none';
+
+            haptic('light');
+            resetGame();
+        }
+
+        async function startBlitzCountdown() {
+            for (let i = 3; i >= 1; i--) {
+                const countdown = document.createElement('div');
+                countdown.className = 'blitz-countdown';
+                countdown.textContent = i;
+                document.body.appendChild(countdown);
+                haptic('medium');
+                await sleep(800);
+                countdown.remove();
+            }
+
+            const goText = document.createElement('div');
+            goText.className = 'blitz-countdown';
+            goText.textContent = 'GO!';
+            document.body.appendChild(goText);
+            haptic('heavy');
+            await sleep(600);
+            goText.remove();
+
+            gameStarted = true;
+            startTimer();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    gameStarted = false;
+                    gameOver("TIME'S UP!");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timer-display').textContent = display;
+
+            const fill = document.getElementById('timer-fill');
+            const percent = (timeRemaining / blitzTime) * 100;
+            fill.style.width = percent + '%';
+
+            const timerEl = document.getElementById('timer-display');
+            timerEl.classList.remove('warning', 'critical');
+            fill.classList.remove('warning', 'critical');
+
+            if (timeRemaining <= 10) {
+                timerEl.classList.add('critical');
+                fill.classList.add('critical');
+            } else if (timeRemaining <= 20) {
+                timerEl.classList.add('warning');
+                fill.classList.add('warning');
+            }
+        }
+
+        function gameOver(title = 'NO MORE MOVES!') {
+            haptic('error');
+            document.getElementById('game-over-title').textContent = title;
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('game-over').classList.remove('hidden');
+        }
+
+        function resetGame() {
+            document.getElementById('game-over').classList.add('hidden');
+
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            score = 0;
+            level = 1;
+            goal = 1000;
+            gameStarted = false;
+            timeRemaining = blitzTime;
+            selectedTile = null;
+            isAnimating = false;
+
+            document.getElementById('score').textContent = score;
+            document.getElementById('level').textContent = level;
+            document.getElementById('goal').textContent = goal;
+
+            if (gameMode === 'blitz') {
+                updateTimerDisplay();
+            }
+
+            haptic('medium');
+            init();
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // ==================== LEADERBOARD ====================
+        const MAX_LEADERBOARD_ENTRIES = 10;
+        let currentLeaderboardTab = 'classic';
+        let pendingScore = null;
+        let lastPlayerName = localStorage.getItem('brunjeweled_lastPlayer') || '';
+
+        function getLeaderboard(mode) {
+            const key = `brunjeweled_leaderboard_${mode}`;
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveLeaderboard(mode, leaderboard) {
+            localStorage.setItem(`brunjeweled_leaderboard_${mode}`, JSON.stringify(leaderboard));
+        }
+
+        function isHighScore(finalScore, mode) {
+            if (finalScore <= 0) return false;
+            const leaderboard = getLeaderboard(mode);
+            if (leaderboard.length < MAX_LEADERBOARD_ENTRIES) return true;
+            return finalScore > leaderboard[leaderboard.length - 1].score;
+        }
+
+        function getHighScoreRank(finalScore, mode) {
+            const leaderboard = getLeaderboard(mode);
+            let rank = 1;
+            for (const entry of leaderboard) {
+                if (finalScore > entry.score) break;
+                rank++;
+            }
+            return rank;
+        }
+
+        function checkHighScore(finalScore, mode) {
+            updateStat('highestScore', finalScore, true);
+            if (mode === 'blitz') updateStat('highestBlitzScore', finalScore, true);
+
+            if (isHighScore(finalScore, mode)) {
+                pendingScore = { score: finalScore, mode: mode };
+                showNameInput(finalScore, getHighScoreRank(finalScore, mode));
+            } else {
+                document.getElementById('game-over').classList.remove('hidden');
+                playGameOver();
+            }
+        }
+
+        function showNameInput(finalScore, rank) {
+            document.getElementById('new-score-display').textContent = finalScore.toLocaleString();
+            document.getElementById('highscore-rank').textContent = `You ranked #${rank}!`;
+            document.getElementById('player-name-input').value = lastPlayerName;
+            document.getElementById('name-input-overlay').classList.remove('hidden');
+            playHighScore();
+
+            setTimeout(() => {
+                const input = document.getElementById('player-name-input');
+                input.focus();
+                input.select();
+            }, 100);
+
+            document.getElementById('player-name-input').onkeydown = (e) => {
+                if (e.key === 'Enter') submitHighScore();
+            };
+        }
+
+        function submitHighScore() {
+            if (!pendingScore) return;
+
+            let name = document.getElementById('player-name-input').value.trim() || 'Anonymous';
+            lastPlayerName = name;
+            localStorage.setItem('brunjeweled_lastPlayer', name);
+
+            const leaderboard = getLeaderboard(pendingScore.mode);
+            leaderboard.push({
+                name: name,
+                score: pendingScore.score,
+                date: new Date().toISOString()
+            });
+
+            leaderboard.sort((a, b) => b.score - a.score);
+            while (leaderboard.length > MAX_LEADERBOARD_ENTRIES) leaderboard.pop();
+            saveLeaderboard(pendingScore.mode, leaderboard);
+
+            document.getElementById('name-input-overlay').classList.add('hidden');
+            document.getElementById('game-over').classList.remove('hidden');
+            pendingScore = null;
+        }
+
+        function skipHighScore() {
+            document.getElementById('name-input-overlay').classList.add('hidden');
+            document.getElementById('game-over').classList.remove('hidden');
+            playGameOver();
+            pendingScore = null;
+        }
+
+        function showLeaderboard() {
+            currentLeaderboardTab = gameMode;
+            updateLeaderboardTabs();
+            renderLeaderboard();
+            document.getElementById('leaderboard-overlay').classList.remove('hidden');
+            haptic('light');
+        }
+
+        function hideLeaderboard() {
+            document.getElementById('leaderboard-overlay').classList.add('hidden');
+        }
+
+        function switchLeaderboardTab(mode) {
+            currentLeaderboardTab = mode;
+            updateLeaderboardTabs();
+            renderLeaderboard();
+            haptic('light');
+        }
+
+        function updateLeaderboardTabs() {
+            document.getElementById('tab-classic').classList.toggle('active', currentLeaderboardTab === 'classic');
+            document.getElementById('tab-blitz').classList.toggle('active', currentLeaderboardTab === 'blitz');
+        }
+
+        function renderLeaderboard() {
+            const leaderboard = getLeaderboard(currentLeaderboardTab);
+            const list = document.getElementById('leaderboard-list');
+
+            if (leaderboard.length === 0) {
+                list.innerHTML = '<div class="leaderboard-empty">No scores yet. Be the first!</div>';
+                return;
+            }
+
+            list.innerHTML = leaderboard.map((entry, index) => `
+                <div class="leaderboard-entry">
+                    <div class="leaderboard-rank">#${index + 1}</div>
+                    <div class="leaderboard-name">${escapeHtml(entry.name)}</div>
+                    <div class="leaderboard-score">${entry.score.toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== ACHIEVEMENTS ====================
+        const ACHIEVEMENTS = [
+            { id: 'first_match', name: 'First Purr', icon: '🐱', desc: 'Make your first match', stat: 'totalMatches', target: 1 },
+            { id: 'matches_100', name: 'Cat Collector', icon: '😺', desc: 'Match 100 cats', stat: 'totalGemsMatched', target: 100 },
+            { id: 'matches_500', name: 'Cat Herder', icon: '🏆', desc: 'Match 500 cats', stat: 'totalGemsMatched', target: 500 },
+            { id: 'cascade_3', name: 'Yarn Ball', icon: '🧶', desc: 'Get a 3x cascade', stat: 'maxCascade', target: 3 },
+            { id: 'cascade_5', name: 'Cat-astrophe', icon: '🌊', desc: 'Get a 5x cascade', stat: 'maxCascade', target: 5 },
+            { id: 'flame_1', name: 'Hot Cat', icon: '🔥', desc: 'Create a Flame cat', stat: 'flameGemsCreated', target: 1 },
+            { id: 'star_1', name: 'Star Kitty', icon: '⭐', desc: 'Create a Star cat', stat: 'starGemsCreated', target: 1 },
+            { id: 'hyper_1', name: 'Magic Meow', icon: '🌈', desc: 'Create a Rainbow cat', stat: 'hypercubesCreated', target: 1 },
+            { id: 'score_5k', name: 'Clever Cat', icon: '🥈', desc: 'Score 5,000 points', stat: 'highestScore', target: 5000 },
+            { id: 'score_10k', name: 'Top Cat', icon: '🥇', desc: 'Score 10,000 points', stat: 'highestScore', target: 10000 },
+            { id: 'score_25k', name: 'Cat King', icon: '👑', desc: 'Score 25,000 points', stat: 'highestScore', target: 25000 },
+            { id: 'blitz_5k', name: 'Speed Paws', icon: '🚀', desc: 'Score 5,000 in Blitz', stat: 'highestBlitzScore', target: 5000 },
+            { id: 'games_10', name: 'Cat Person', icon: '🎮', desc: 'Play 10 games', stat: 'gamesPlayed', target: 10 },
+            { id: 'level_5', name: 'Kitten', icon: '🐈', desc: 'Reach level 5', stat: 'highestLevel', target: 5 },
+            { id: 'level_10', name: 'Fat Cat', icon: '😸', desc: 'Reach level 10', stat: 'highestLevel', target: 10 }
+        ];
+
+        let gameStats = {
+            totalMatches: 0,
+            totalGemsMatched: 0,
+            maxCascade: 0,
+            flameGemsCreated: 0,
+            starGemsCreated: 0,
+            hypercubesCreated: 0,
+            highestScore: 0,
+            highestBlitzScore: 0,
+            gamesPlayed: 0,
+            highestLevel: 1
+        };
+
+        let unlockedAchievements = [];
+
+        function loadStats() {
+            const saved = localStorage.getItem('brunjeweled_stats');
+            if (saved) gameStats = { ...gameStats, ...JSON.parse(saved) };
+            const savedAchievements = localStorage.getItem('brunjeweled_achievements');
+            if (savedAchievements) unlockedAchievements = JSON.parse(savedAchievements);
+        }
+
+        function saveStats() {
+            localStorage.setItem('brunjeweled_stats', JSON.stringify(gameStats));
+            localStorage.setItem('brunjeweled_achievements', JSON.stringify(unlockedAchievements));
+        }
+
+        function updateStat(stat, value, isMax = false) {
+            if (isMax) {
+                if (value > gameStats[stat]) gameStats[stat] = value;
+            } else {
+                gameStats[stat] += value;
+            }
+            saveStats();
+            checkAchievements();
+        }
+
+        function checkAchievements() {
+            ACHIEVEMENTS.forEach(achievement => {
+                if (unlockedAchievements.includes(achievement.id)) return;
+                if (gameStats[achievement.stat] >= achievement.target) {
+                    unlockAchievement(achievement);
+                }
+            });
+        }
+
+        function unlockAchievement(achievement) {
+            if (unlockedAchievements.includes(achievement.id)) return;
+            unlockedAchievements.push(achievement.id);
+            saveStats();
+            showAchievementPopup(achievement);
+            playAchievement();
+            haptic('success');
+        }
+
+        function showAchievementPopup(achievement) {
+            const existing = document.querySelector('.achievement-popup');
+            if (existing) existing.remove();
+
+            const popup = document.createElement('div');
+            popup.className = 'achievement-popup';
+            popup.innerHTML = `
+                <div class="achievement-popup-icon">${achievement.icon}</div>
+                <div>
+                    <div class="achievement-popup-title">Achievement Unlocked!</div>
+                    <div class="achievement-popup-name">${achievement.name}</div>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 3000);
+        }
+
+        function showAchievements() {
+            renderAchievementsStats();
+            renderAchievementsGrid();
+            document.getElementById('achievements-overlay').classList.remove('hidden');
+            haptic('light');
+        }
+
+        function hideAchievements() {
+            document.getElementById('achievements-overlay').classList.add('hidden');
+        }
+
+        function renderAchievementsStats() {
+            document.getElementById('achievements-stats').innerHTML = `
+                <div class="stat-item"><div class="stat-value">${gameStats.gamesPlayed}</div><div class="stat-label">Games</div></div>
+                <div class="stat-item"><div class="stat-value">${gameStats.totalGemsMatched}</div><div class="stat-label">Cats</div></div>
+                <div class="stat-item"><div class="stat-value">${gameStats.highestScore.toLocaleString()}</div><div class="stat-label">Best</div></div>
+                <div class="stat-item"><div class="stat-value">${gameStats.maxCascade}x</div><div class="stat-label">Combo</div></div>
+            `;
+            document.getElementById('achievements-progress').textContent =
+                `${unlockedAchievements.length} / ${ACHIEVEMENTS.length} Achievements Unlocked`;
+        }
+
+        function renderAchievementsGrid() {
+            document.getElementById('achievements-grid').innerHTML = ACHIEVEMENTS.map(a => `
+                <div class="achievement-badge ${unlockedAchievements.includes(a.id) ? 'unlocked' : 'locked'}">
+                    <div class="badge-icon">${a.icon}</div>
+                    <div class="badge-name">${a.name}</div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== UPDATE GAME FUNCTIONS ====================
+        // Override gameOver to check high scores
+        function gameOver(title = 'NO MORE MOVES!') {
+            haptic('error');
+            document.getElementById('game-over-title').textContent = title;
+            document.getElementById('final-score').textContent = score;
+            updateStat('gamesPlayed', 1);
+            checkHighScore(score, gameMode);
+        }
+
+        // Start game
+        loadStats();
+        updateSoundIcon();
+        init();
+    </script>
+</body>
+</html>
