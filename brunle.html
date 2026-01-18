@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Брунль</title>
+  <style>
+    :root {
+      --bg-color: #121213;
+      --tile-bg: #3a3a3c;
+      --tile-border: #3a3a3c;
+      --key-bg: #818384;
+      --key-text: #ffffff;
+      --correct: #538d4e;
+      --present: #b59f3b;
+      --absent: #3a3a3c;
+      --bruno-orange: #e67e22;
+      --bruno-light: #f39c12;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    header {
+      width: 100%;
+      max-width: 500px;
+      padding: 10px 16px;
+      border-bottom: 1px solid #3a3a3c;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: var(--bruno-orange);
+    }
+
+    .mode-toggle {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mode-btn {
+      background: var(--tile-bg);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .mode-btn.active {
+      background: var(--bruno-orange);
+    }
+
+    .mode-btn:hover {
+      background: var(--bruno-light);
+    }
+
+    .header-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    /* Game container */
+    .game-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 500px;
+      padding: 10px;
+    }
+
+    /* Game board */
+    .board {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      margin: 20px 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .tile {
+      width: 58px;
+      height: 58px;
+      border: 2px solid var(--tile-border);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 32px;
+      font-weight: bold;
+      text-transform: uppercase;
+      transition: transform 0.1s;
+    }
+
+    .tile.filled {
+      border-color: #565758;
+      animation: pop 0.1s;
+    }
+
+    .tile.reveal {
+      animation: flip 0.5s ease forwards;
+    }
+
+    .tile.correct {
+      background-color: var(--correct);
+      border-color: var(--correct);
+    }
+
+    .tile.present {
+      background-color: var(--present);
+      border-color: var(--present);
+    }
+
+    .tile.absent {
+      background-color: var(--absent);
+      border-color: var(--absent);
+    }
+
+    @keyframes pop {
+      50% { transform: scale(1.1); }
+    }
+
+    @keyframes flip {
+      0% { transform: rotateX(0); }
+      50% { transform: rotateX(90deg); }
+      100% { transform: rotateX(0); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-5px); }
+      40%, 80% { transform: translateX(5px); }
+    }
+
+    .row.shake {
+      animation: shake 0.5s;
+    }
+
+    /* Keyboard */
+    .keyboard {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding-bottom: 10px;
+    }
+
+    .keyboard-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    .key {
+      min-width: 28px;
+      height: 50px;
+      background: var(--key-bg);
+      color: var(--key-text);
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-transform: uppercase;
+      transition: background-color 0.2s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .key:active {
+      transform: scale(0.95);
+    }
+
+    .key.wide {
+      min-width: 55px;
+      font-size: 12px;
+    }
+
+    .key.correct {
+      background-color: var(--correct);
+    }
+
+    .key.present {
+      background-color: var(--present);
+    }
+
+    .key.absent {
+      background-color: var(--absent);
+    }
+
+    /* Toast messages */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+    }
+
+    .toast {
+      background: white;
+      color: black;
+      padding: 12px 20px;
+      border-radius: 4px;
+      font-weight: bold;
+      animation: fadeIn 0.3s, fadeOut 0.3s 1.7s;
+      margin-bottom: 8px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-color);
+      border: 1px solid #3a3a3c;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 90%;
+      width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .modal h2 {
+      text-align: center;
+      margin-bottom: 16px;
+      color: var(--bruno-orange);
+    }
+
+    /* Bruno overlay */
+    .bruno-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 200;
+    }
+
+    .bruno-overlay.show {
+      display: flex;
+      animation: fadeIn 0.5s;
+    }
+
+    .bruno-image {
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
+      margin-bottom: 20px;
+    }
+
+    .bruno-image.sad {
+      filter: grayscale(60%) brightness(0.7);
+    }
+
+    .bruno-message {
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--bruno-orange);
+    }
+
+    .bruno-word {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #888;
+    }
+
+    .play-again-btn {
+      background: var(--bruno-orange);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 18px;
+      cursor: pointer;
+      margin: 8px;
+    }
+
+    .play-again-btn:hover {
+      background: var(--bruno-light);
+    }
+
+    .share-btn {
+      background: var(--correct);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      font-size: 18px;
+      cursor: pointer;
+      margin: 8px;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .guess-distribution {
+      margin-top: 16px;
+    }
+
+    .guess-distribution h3 {
+      margin-bottom: 10px;
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+
+    .guess-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .guess-number {
+      width: 12px;
+      text-align: right;
+    }
+
+    .guess-bar {
+      background: var(--correct);
+      color: white;
+      padding: 2px 8px;
+      min-width: 20px;
+      text-align: right;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    /* Hearts animation for Bruno easter egg */
+    .hearts-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+      overflow: hidden;
+    }
+
+    .heart {
+      position: absolute;
+      font-size: 24px;
+      animation: floatHeart 3s ease-out forwards;
+    }
+
+    @keyframes floatHeart {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1) rotate(0deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-400px) scale(1.5) rotate(15deg);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 400px) {
+      .tile {
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+      }
+
+      .key {
+        min-width: 24px;
+        height: 45px;
+        font-size: 12px;
+      }
+
+      .key.wide {
+        min-width: 48px;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <script src="dictionary.js"></script>
+
+  <header>
+    <button class="header-btn" id="statsBtn">📊</button>
+    <h1 class="title">БРУНЛЬ</h1>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="dailyBtn">День</button>
+      <button class="mode-btn" id="randomBtn">🎲</button>
+    </div>
+  </header>
+
+  <div class="game-container">
+    <div class="board" id="board"></div>
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Stats Modal -->
+  <div class="modal-overlay" id="statsModal">
+    <div class="modal">
+      <button class="modal-close" id="closeStats">&times;</button>
+      <h2>Статистика</h2>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-item">
+          <div class="stat-value" id="gamesPlayed">0</div>
+          <div class="stat-label">Игры</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="winPercent">0</div>
+          <div class="stat-label">% Побед</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="currentStreak">0</div>
+          <div class="stat-label">Серия</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="maxStreak">0</div>
+          <div class="stat-label">Макс серия</div>
+        </div>
+      </div>
+      <div class="guess-distribution">
+        <h3>Распределение попыток</h3>
+        <div id="distributionBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bruno Overlay -->
+  <div class="bruno-overlay" id="brunoOverlay">
+    <img src="brumba.png" alt="Bruno" class="bruno-image" id="brunoImage">
+    <div class="bruno-message" id="brunoMessage"></div>
+    <div class="bruno-word" id="brunoWord"></div>
+    <div>
+      <button class="share-btn" id="shareBtn">Поделиться 📋</button>
+      <button class="play-again-btn" id="playAgainBtn">Ещё раз</button>
+    </div>
+  </div>
+
+  <!-- Hearts container for Bruno easter egg -->
+  <div class="hearts-container" id="heartsContainer"></div>
+
+  <script>
+    // Game State
+    const WORD_LENGTH = 5;
+    const MAX_GUESSES = 6;
+
+    // Normalize ё to е for comparison (common in Russian word games)
+    function normalize(str) {
+      return str.replace(/ё/g, 'е');
+    }
+
+    let gameMode = 'daily'; // 'daily' or 'random'
+    let targetWord = '';
+    let currentGuess = '';
+    let currentRow = 0;
+    let gameOver = false;
+    let guesses = [];
+    let letterStates = {}; // Track letter states for keyboard coloring
+
+    // Russian keyboard layout
+    const KEYBOARD_ROWS = [
+      ['й', 'ц', 'у', 'к', 'е', 'н', 'г', 'ш', 'щ', 'з', 'х', 'ъ'],
+      ['ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л', 'д', 'ж', 'э'],
+      ['ВВОД', 'я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю', '⌫']
+    ];
+
+    // Map physical key codes to Russian (works regardless of keyboard layout)
+    const CODE_TO_RU = {
+      'KeyQ': 'й', 'KeyW': 'ц', 'KeyE': 'у', 'KeyR': 'к', 'KeyT': 'е', 'KeyY': 'н', 'KeyU': 'г', 'KeyI': 'ш', 'KeyO': 'щ', 'KeyP': 'з', 'BracketLeft': 'х', 'BracketRight': 'ъ',
+      'KeyA': 'ф', 'KeyS': 'ы', 'KeyD': 'в', 'KeyF': 'а', 'KeyG': 'п', 'KeyH': 'р', 'KeyJ': 'о', 'KeyK': 'л', 'KeyL': 'д', 'Semicolon': 'ж', 'Quote': 'э',
+      'KeyZ': 'я', 'KeyX': 'ч', 'KeyC': 'с', 'KeyV': 'м', 'KeyB': 'и', 'KeyN': 'т', 'KeyM': 'ь', 'Comma': 'б', 'Period': 'ю'
+    };
+
+    // DOM Elements
+    const boardEl = document.getElementById('board');
+    const keyboardEl = document.getElementById('keyboard');
+    const toastContainer = document.getElementById('toastContainer');
+    const statsModal = document.getElementById('statsModal');
+    const brunoOverlay = document.getElementById('brunoOverlay');
+    const brunoImage = document.getElementById('brunoImage');
+    const brunoMessage = document.getElementById('brunoMessage');
+    const brunoWord = document.getElementById('brunoWord');
+    const heartsContainer = document.getElementById('heartsContainer');
+
+    // Initialize the game
+    function init() {
+      createBoard();
+      createKeyboard();
+      selectTargetWord();
+      setupEventListeners();
+      loadStats();
+      checkDailyCompletion();
+    }
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+      for (let i = 0; i < MAX_GUESSES; i++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.id = `row-${i}`;
+        for (let j = 0; j < WORD_LENGTH; j++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          tile.id = `tile-${i}-${j}`;
+          row.appendChild(tile);
+        }
+        boardEl.appendChild(row);
+      }
+    }
+
+    function createKeyboard() {
+      keyboardEl.innerHTML = '';
+      KEYBOARD_ROWS.forEach(row => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'keyboard-row';
+        row.forEach(key => {
+          const keyEl = document.createElement('button');
+          keyEl.className = 'key';
+          keyEl.textContent = key;
+          keyEl.dataset.key = key;
+          if (key === 'ВВОД' || key === '⌫') {
+            keyEl.classList.add('wide');
+          }
+          keyEl.addEventListener('click', () => handleKeyPress(key));
+          rowEl.appendChild(keyEl);
+        });
+        keyboardEl.appendChild(rowEl);
+      });
+    }
+
+    function selectTargetWord() {
+      if (gameMode === 'daily') {
+        // Use date-based seed for consistent daily word
+        const today = new Date();
+        const dateString = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+        const seed = hashCode(dateString);
+        const index = Math.abs(seed) % WORDS.length;
+        targetWord = WORDS[index].toLowerCase();
+      } else {
+        // Random word (excluding "бруно" to keep it special)
+        const wordsWithoutBruno = WORDS.filter(w => w !== 'бруно');
+        targetWord = wordsWithoutBruno[Math.floor(Math.random() * wordsWithoutBruno.length)].toLowerCase();
+      }
+    }
+
+    function hashCode(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return hash;
+    }
+
+    function setupEventListeners() {
+      // Physical keyboard
+      document.addEventListener('keydown', (e) => {
+        if (gameOver) return;
+
+        if (e.key === 'Enter') {
+          handleKeyPress('ВВОД');
+        } else if (e.key === 'Backspace') {
+          handleKeyPress('⌫');
+        } else {
+          // First try to map physical key code to Russian (works regardless of OS keyboard layout)
+          let ruKey = CODE_TO_RU[e.code];
+
+          // If not found, check if e.key is already a Russian character
+          if (!ruKey) {
+            const key = e.key.toLowerCase();
+            if (/^[а-яё]$/.test(key)) {
+              ruKey = key;
+            }
+          }
+
+          if (ruKey) {
+            handleKeyPress(ruKey);
+          }
+        }
+      });
+
+      // Mode buttons
+      document.getElementById('dailyBtn').addEventListener('click', () => setMode('daily'));
+      document.getElementById('randomBtn').addEventListener('click', () => setMode('random'));
+
+      // Stats button
+      document.getElementById('statsBtn').addEventListener('click', showStats);
+      document.getElementById('closeStats').addEventListener('click', () => statsModal.classList.remove('show'));
+
+      // Bruno overlay buttons
+      document.getElementById('playAgainBtn').addEventListener('click', () => {
+        brunoOverlay.classList.remove('show');
+        if (gameMode === 'random') {
+          resetGame();
+        } else {
+          showToast('Приходите завтра за новым словом!');
+        }
+      });
+
+      document.getElementById('shareBtn').addEventListener('click', shareResult);
+
+      // Close modals on overlay click
+      statsModal.addEventListener('click', (e) => {
+        if (e.target === statsModal) statsModal.classList.remove('show');
+      });
+    }
+
+    function handleKeyPress(key) {
+      if (gameOver) return;
+
+      if (key === '⌫') {
+        currentGuess = currentGuess.slice(0, -1);
+        updateBoard();
+      } else if (key === 'ВВОД') {
+        submitGuess();
+      } else if (currentGuess.length < WORD_LENGTH) {
+        currentGuess += key.toLowerCase();
+        updateBoard();
+
+        // Animate tile
+        const tile = document.getElementById(`tile-${currentRow}-${currentGuess.length - 1}`);
+        tile.classList.add('filled');
+      }
+    }
+
+    function updateBoard() {
+      for (let i = 0; i < WORD_LENGTH; i++) {
+        const tile = document.getElementById(`tile-${currentRow}-${i}`);
+        tile.textContent = currentGuess[i] || '';
+        if (!currentGuess[i]) {
+          tile.classList.remove('filled');
+        }
+      }
+    }
+
+    function submitGuess() {
+      if (currentGuess.length !== WORD_LENGTH) {
+        showToast('Слишком короткое слово');
+        shakeRow();
+        return;
+      }
+
+      // Check if word is valid (special case for "бруно")
+      const isValidWord = currentGuess === 'бруно' || VALID_GUESSES.has(currentGuess) || WORDS.includes(currentGuess);
+
+      if (!isValidWord) {
+        showToast('Слово не найдено');
+        shakeRow();
+        return;
+      }
+
+      // Bruno easter egg
+      if (currentGuess === 'бруно') {
+        triggerBrunoEasterEgg();
+      }
+
+      guesses.push(currentGuess);
+      revealGuess();
+    }
+
+    function revealGuess() {
+      const guess = currentGuess;
+      // Use normalized arrays for comparison (е = ё)
+      const targetArray = targetWord.split('').map(normalize);
+      const guessArray = guess.split('').map(normalize);
+      const targetArrayCopy = [...targetArray];
+      const guessArrayCopy = [...guessArray];
+      const result = new Array(WORD_LENGTH).fill('absent');
+
+      // First pass: mark correct letters
+      for (let i = 0; i < WORD_LENGTH; i++) {
+        if (guessArrayCopy[i] === targetArrayCopy[i]) {
+          result[i] = 'correct';
+          targetArrayCopy[i] = null;
+          guessArrayCopy[i] = null;
+        }
+      }
+
+      // Second pass: mark present letters
+      for (let i = 0; i < WORD_LENGTH; i++) {
+        if (guessArrayCopy[i] !== null) {
+          const index = targetArrayCopy.indexOf(guessArrayCopy[i]);
+          if (index !== -1) {
+            result[i] = 'present';
+            targetArrayCopy[index] = null;
+          }
+        }
+      }
+
+      // Animate tiles
+      for (let i = 0; i < WORD_LENGTH; i++) {
+        const tile = document.getElementById(`tile-${currentRow}-${i}`);
+        setTimeout(() => {
+          tile.classList.add('reveal', result[i]);
+        }, i * 300);
+      }
+
+      // Update keyboard colors
+      setTimeout(() => {
+        for (let i = 0; i < WORD_LENGTH; i++) {
+          const letter = guess[i];
+          const state = result[i];
+
+          // Only upgrade state (absent -> present -> correct)
+          if (!letterStates[letter] ||
+              (letterStates[letter] === 'absent' && state !== 'absent') ||
+              (letterStates[letter] === 'present' && state === 'correct')) {
+            letterStates[letter] = state;
+          }
+
+          const keyEl = document.querySelector(`.key[data-key="${letter}"]`);
+          if (keyEl) {
+            keyEl.classList.remove('correct', 'present', 'absent');
+            keyEl.classList.add(letterStates[letter]);
+          }
+        }
+
+        // Check win/lose (use normalized comparison for е/ё equivalence)
+        if (normalize(guess) === normalize(targetWord)) {
+          gameOver = true;
+          setTimeout(() => showWin(), 500);
+        } else if (currentRow === MAX_GUESSES - 1) {
+          gameOver = true;
+          setTimeout(() => showLoss(), 500);
+        } else {
+          currentRow++;
+          currentGuess = '';
+        }
+      }, WORD_LENGTH * 300 + 250);
+    }
+
+    function shakeRow() {
+      const row = document.getElementById(`row-${currentRow}`);
+      row.classList.add('shake');
+      setTimeout(() => row.classList.remove('shake'), 500);
+    }
+
+    function showToast(message) {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      toastContainer.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    }
+
+    function showWin() {
+      const messages = [
+        'Мяу! Молодец!',
+        'Гениально! Бруно доволен!',
+        'Мурр! Отлично!',
+        'Бруно аплодирует!',
+        'Превосходно! 🐱'
+      ];
+
+      brunoImage.classList.remove('sad');
+      brunoMessage.textContent = messages[Math.min(currentRow, messages.length - 1)];
+      brunoWord.textContent = '';
+      brunoOverlay.classList.add('show');
+
+      updateStats(true, currentRow + 1);
+      saveDailyCompletion();
+    }
+
+    function showLoss() {
+      brunoImage.classList.add('sad');
+      brunoMessage.textContent = 'Мяу... В следующий раз!';
+      brunoWord.textContent = `Слово было: ${targetWord.toUpperCase()}`;
+      brunoOverlay.classList.add('show');
+
+      updateStats(false, null);
+      saveDailyCompletion();
+    }
+
+    function triggerBrunoEasterEgg() {
+      // Create floating hearts
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          const heart = document.createElement('div');
+          heart.className = 'heart';
+          heart.textContent = ['❤️', '🧡', '💛', '🐱', '✨'][Math.floor(Math.random() * 5)];
+          heart.style.left = `${Math.random() * 100}%`;
+          heart.style.bottom = '0';
+          heart.style.animationDuration = `${2 + Math.random() * 2}s`;
+          heartsContainer.appendChild(heart);
+          setTimeout(() => heart.remove(), 3000);
+        }, i * 100);
+      }
+    }
+
+    function setMode(mode) {
+      if (mode === gameMode && !gameOver) return;
+
+      gameMode = mode;
+      document.getElementById('dailyBtn').classList.toggle('active', mode === 'daily');
+      document.getElementById('randomBtn').classList.toggle('active', mode === 'random');
+
+      resetGame();
+
+      if (mode === 'daily') {
+        checkDailyCompletion();
+      }
+    }
+
+    function resetGame() {
+      currentGuess = '';
+      currentRow = 0;
+      gameOver = false;
+      guesses = [];
+      letterStates = {};
+
+      createBoard();
+
+      // Reset keyboard colors
+      document.querySelectorAll('.key').forEach(key => {
+        key.classList.remove('correct', 'present', 'absent');
+      });
+
+      selectTargetWord();
+    }
+
+    // Statistics
+    function getStats() {
+      const key = `brunle-stats-${gameMode}`;
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentStreak: 0,
+        maxStreak: 0,
+        distribution: [0, 0, 0, 0, 0, 0]
+      };
+    }
+
+    function saveStats(stats) {
+      const key = `brunle-stats-${gameMode}`;
+      localStorage.setItem(key, JSON.stringify(stats));
+    }
+
+    function updateStats(won, guessCount) {
+      const stats = getStats();
+      stats.gamesPlayed++;
+
+      if (won) {
+        stats.gamesWon++;
+        stats.currentStreak++;
+        stats.maxStreak = Math.max(stats.maxStreak, stats.currentStreak);
+        stats.distribution[guessCount - 1]++;
+      } else {
+        stats.currentStreak = 0;
+      }
+
+      saveStats(stats);
+    }
+
+    function loadStats() {
+      const stats = getStats();
+      document.getElementById('gamesPlayed').textContent = stats.gamesPlayed;
+      document.getElementById('winPercent').textContent = stats.gamesPlayed > 0
+        ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
+        : 0;
+      document.getElementById('currentStreak').textContent = stats.currentStreak;
+      document.getElementById('maxStreak').textContent = stats.maxStreak;
+
+      // Update distribution bars
+      const maxGuesses = Math.max(...stats.distribution, 1);
+      const barsEl = document.getElementById('distributionBars');
+      barsEl.innerHTML = '';
+
+      stats.distribution.forEach((count, i) => {
+        const row = document.createElement('div');
+        row.className = 'guess-bar-row';
+        row.innerHTML = `
+          <div class="guess-number">${i + 1}</div>
+          <div class="guess-bar" style="width: ${(count / maxGuesses) * 100}%">${count}</div>
+        `;
+        barsEl.appendChild(row);
+      });
+    }
+
+    function showStats() {
+      loadStats();
+      statsModal.classList.add('show');
+    }
+
+    // Daily completion tracking
+    function getDailyKey() {
+      const today = new Date();
+      return `brunle-daily-${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    }
+
+    function saveDailyCompletion() {
+      if (gameMode === 'daily') {
+        localStorage.setItem(getDailyKey(), JSON.stringify({
+          completed: true,
+          guesses: guesses,
+          won: normalize(guesses[guesses.length - 1]) === normalize(targetWord)
+        }));
+      }
+    }
+
+    function checkDailyCompletion() {
+      if (gameMode !== 'daily') return;
+
+      const saved = localStorage.getItem(getDailyKey());
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.completed) {
+          // Restore the completed game
+          guesses = data.guesses;
+          currentRow = guesses.length;
+          gameOver = true;
+          letterStates = {};
+
+          // Rebuild the board with saved guesses
+          guesses.forEach((guess, rowIndex) => {
+            // Use normalized arrays for comparison (е = ё)
+            const targetArray = targetWord.split('').map(normalize);
+            const guessArray = guess.split('').map(normalize);
+            const targetArrayCopy = [...targetArray];
+            const guessArrayCopy = [...guessArray];
+            const result = new Array(WORD_LENGTH).fill('absent');
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+              if (guessArrayCopy[i] === targetArrayCopy[i]) {
+                result[i] = 'correct';
+                targetArrayCopy[i] = null;
+                guessArrayCopy[i] = null;
+              }
+            }
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+              if (guessArrayCopy[i] !== null) {
+                const index = targetArrayCopy.indexOf(guessArrayCopy[i]);
+                if (index !== -1) {
+                  result[i] = 'present';
+                  targetArrayCopy[index] = null;
+                }
+              }
+            }
+
+            for (let i = 0; i < WORD_LENGTH; i++) {
+              const tile = document.getElementById(`tile-${rowIndex}-${i}`);
+              tile.textContent = guess[i];
+              tile.classList.add(result[i]);
+
+              const letter = guess[i];
+              if (!letterStates[letter] ||
+                  (letterStates[letter] === 'absent' && result[i] !== 'absent') ||
+                  (letterStates[letter] === 'present' && result[i] === 'correct')) {
+                letterStates[letter] = result[i];
+              }
+            }
+          });
+
+          // Update keyboard
+          Object.keys(letterStates).forEach(letter => {
+            const keyEl = document.querySelector(`.key[data-key="${letter}"]`);
+            if (keyEl) {
+              keyEl.classList.add(letterStates[letter]);
+            }
+          });
+
+          showToast('Вы уже играли сегодня!');
+        }
+      }
+    }
+
+    // Share functionality
+    function shareResult() {
+      const dayNum = gameMode === 'daily' ? getDayNumber() : '∞';
+      const won = normalize(guesses[guesses.length - 1]) === normalize(targetWord);
+      const attempts = won ? guesses.length : 'X';
+
+      let shareText = `Брунль ${dayNum} ${attempts}/6\n\n`;
+
+      guesses.forEach(guess => {
+        // Use normalized arrays for comparison (е = ё)
+        const targetArray = targetWord.split('').map(normalize);
+        const guessArray = guess.split('').map(normalize);
+        const targetArrayCopy = [...targetArray];
+        const guessArrayCopy = [...guessArray];
+        const result = new Array(WORD_LENGTH).fill('⬜');
+
+        for (let i = 0; i < WORD_LENGTH; i++) {
+          if (guessArrayCopy[i] === targetArrayCopy[i]) {
+            result[i] = '🟩';
+            targetArrayCopy[i] = null;
+            guessArrayCopy[i] = null;
+          }
+        }
+
+        for (let i = 0; i < WORD_LENGTH; i++) {
+          if (guessArrayCopy[i] !== null) {
+            const index = targetArrayCopy.indexOf(guessArrayCopy[i]);
+            if (index !== -1) {
+              result[i] = '🟨';
+              targetArrayCopy[index] = null;
+            }
+          }
+        }
+
+        shareText += result.join('') + '\n';
+      });
+
+      navigator.clipboard.writeText(shareText).then(() => {
+        showToast('Скопировано!');
+      }).catch(() => {
+        showToast('Не удалось скопировать');
+      });
+    }
+
+    function getDayNumber() {
+      const start = new Date(2024, 0, 1);
+      const today = new Date();
+      const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+      return diff;
+    }
+
+    // Start the game
+    init();
+  </script>
+</body>
+</html>
