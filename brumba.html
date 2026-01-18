@@ -211,7 +211,7 @@
         // Roomba
         const roomba = {
             width: 90,
-            height: 25,
+            height: 15, // Visual height of the Roomba body
             wheelAngle: 0
         };
 
@@ -247,7 +247,7 @@
 
         // Get Bruno's X position (fixed, left side of screen)
         function getBrunoX() {
-            return 60 * SCALE;
+            return 30 * SCALE;
         }
 
         // Get roomba center X
@@ -740,75 +740,66 @@
             const x = getRoombaX();
             const y = ROOMBA_Y;
             const w = roomba.width * SCALE;
-            const h = roomba.height;
-            const sideHeight = 18;
+            const sideHeight = roomba.height;
+            const topY = y - sideHeight; // Top surface of Roomba
 
             // Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y + sideHeight + 4, w/2 + 3, 6, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + w/2, y + 4, w/2 + 3, 6, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Side/edge of Roomba (gives 3D depth) - drawn from top of side down
-            // Dark bottom edge
+            // Bottom edge of Roomba
             ctx.fillStyle = '#888888';
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y + sideHeight, w/2 - 1, 5, 0, 0, Math.PI);
+            ctx.ellipse(x + w/2, y, w/2, 6, 0, 0, Math.PI);
             ctx.fill();
 
-            // Side band (gray)
+            // Side band (gray cylinder)
             ctx.fillStyle = '#A0A0A0';
-            ctx.fillRect(x + 3, y, w - 6, sideHeight);
+            ctx.fillRect(x + 4, topY, w - 8, sideHeight);
 
-            // Side edge curves
-            ctx.fillStyle = '#A0A0A0';
+            // Side curves to make it round
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y, w/2 - 3, 6, 0, 0, Math.PI);
+            ctx.ellipse(x + w/2, y, w/2 - 4, 4, 0, 0, Math.PI);
             ctx.fill();
 
-            // Main body top (white)
-            ctx.fillStyle = '#F0F0F0';
+            // Top surface (flat white disc)
+            ctx.fillStyle = '#F5F5F5';
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y, w/2, h/2 + 4, 0, Math.PI, Math.PI * 2);
+            ctx.ellipse(x + w/2, topY, w/2, 10, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Top surface (brighter white)
+            // Inner top surface (brighter)
             ctx.fillStyle = '#FFFFFF';
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y - 2, w/2 - 4, h/2, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + w/2, topY, w/2 - 6, 7, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Subtle edge ring
-            ctx.strokeStyle = '#E0E0E0';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.ellipse(x + w/2, y - 1, w/2 - 2, h/2 + 1, 0, 0, Math.PI * 2);
-            ctx.stroke();
-
             // Control panel area
-            ctx.fillStyle = '#E8E8E8';
+            ctx.fillStyle = '#E0E0E0';
             ctx.beginPath();
-            ctx.ellipse(x + w/2, y - 3, 18, 10, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + w/2, topY, 16, 6, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // Power button (green light)
             ctx.fillStyle = '#00CC00';
             ctx.beginPath();
-            ctx.arc(x + w/2, y - 3, 5, 0, Math.PI * 2);
-            ctx.fill();
-            // Button glow
-            ctx.fillStyle = 'rgba(0, 220, 0, 0.4)';
-            ctx.beginPath();
-            ctx.arc(x + w/2, y - 3, 9, 0, Math.PI * 2);
+            ctx.arc(x + w/2, topY, 4, 0, Math.PI * 2);
             ctx.fill();
 
-            // Front bumper indicator
-            ctx.fillStyle = '#D0D0D0';
+            // Button glow
+            ctx.fillStyle = 'rgba(0, 220, 0, 0.3)';
             ctx.beginPath();
-            ctx.arc(x + w/2, y - 1, w/2 - 6, Math.PI * 1.15, Math.PI * 1.85);
-            ctx.lineTo(x + w/2 + (w/2 - 12) * Math.cos(Math.PI * 1.85), y - 1 + (w/2 - 12) * Math.sin(Math.PI * 1.85));
-            ctx.arc(x + w/2, y - 1, w/2 - 12, Math.PI * 1.85, Math.PI * 1.15, true);
+            ctx.arc(x + w/2, topY, 7, 0, Math.PI * 2);
             ctx.fill();
+
+            // Front bumper (subtle arc at front)
+            ctx.strokeStyle = '#CCCCCC';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x + w/2, topY, w/2 - 8, Math.PI * 1.2, Math.PI * 1.8);
+            ctx.stroke();
         }
 
         function drawBruno() {
