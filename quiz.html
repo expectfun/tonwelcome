@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Bruno's Film Trivia</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="questions.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bruno-orange: #E8842A;
+            --bruno-orange-light: #F5A855;
+            --bruno-orange-dark: #C66A1A;
+            --bruno-cream: #FFF5E6;
+            --bruno-green: #7CB342;
+            --bruno-green-dark: #558B2F;
+            --bg-gradient: linear-gradient(180deg, #FFF5E6 0%, #FFE4C4 100%);
+            --shadow: 0 4px 15px rgba(200, 120, 50, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #4A3728;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .lang-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            background: white;
+            border-radius: 20px;
+            padding: 4px;
+            box-shadow: var(--shadow);
+        }
+
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 16px;
+            transition: all 0.2s ease;
+            color: #7A6558;
+        }
+
+        .lang-btn.active {
+            background: var(--bruno-orange);
+            color: white;
+        }
+
+        .lang-btn:hover:not(.active) {
+            background: var(--bruno-cream);
+        }
+
+        .bruno-container {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .bruno-img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 4px 8px rgba(200, 120, 50, 0.4));
+        }
+
+        .bruno-img.happy {
+            transform: scale(1.1);
+        }
+
+        .bruno-img.sad {
+            transform: scale(0.95);
+            filter: drop-shadow(0 4px 8px rgba(200, 120, 50, 0.4)) grayscale(20%);
+        }
+
+        .speech-bubble {
+            background: white;
+            border-radius: 20px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            position: relative;
+            box-shadow: var(--shadow);
+            text-align: center;
+            font-size: 16px;
+            line-height: 1.4;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 10px solid transparent;
+            border-bottom-color: white;
+            border-top: 0;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--bruno-orange-dark);
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #7A6558;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(180deg, var(--bruno-orange) 0%, var(--bruno-orange-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+            min-width: 200px;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn:hover {
+            background: linear-gradient(180deg, var(--bruno-orange-light) 0%, var(--bruno-orange) 100%);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(180deg, var(--bruno-green) 0%, var(--bruno-green-dark) 100%);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(180deg, #8BC34A 0%, var(--bruno-green) 100%);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 4px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--bruno-green) 0%, var(--bruno-green-dark) 100%);
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+
+        .score-display {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #7A6558;
+        }
+
+        .score-display span {
+            background: rgba(255,255,255,0.7);
+            padding: 5px 12px;
+            border-radius: 12px;
+        }
+
+        .question-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            box-shadow: var(--shadow);
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            color: #4A3728;
+            line-height: 1.4;
+        }
+
+        .answers {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .answer-btn {
+            background: white;
+            border: 2px solid var(--bruno-orange-light);
+            border-radius: 15px;
+            padding: 14px 18px;
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #4A3728;
+        }
+
+        .answer-btn:hover {
+            background: var(--bruno-cream);
+            border-color: var(--bruno-orange);
+        }
+
+        .answer-btn:active {
+            transform: scale(0.98);
+        }
+
+        .answer-btn.correct {
+            background: linear-gradient(180deg, #C8E6C9 0%, #A5D6A7 100%);
+            border-color: var(--bruno-green);
+            color: var(--bruno-green-dark);
+        }
+
+        .answer-btn.wrong {
+            background: linear-gradient(180deg, #FFCDD2 0%, #EF9A9A 100%);
+            border-color: #E57373;
+            color: #C62828;
+        }
+
+        .answer-btn.disabled {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .result-score {
+            font-size: 64px;
+            font-weight: 700;
+            color: var(--bruno-orange);
+            text-shadow: 2px 2px 4px rgba(200, 120, 50, 0.3);
+        }
+
+        .result-label {
+            font-size: 18px;
+            color: #7A6558;
+            margin-bottom: 20px;
+        }
+
+        .stars {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .next-btn {
+            margin-top: 15px;
+            padding: 12px 30px;
+            font-size: 16px;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Language Toggle -->
+    <div class="lang-toggle">
+        <button class="lang-btn active" id="lang-en" onclick="setLanguage('en')">EN</button>
+        <button class="lang-btn" id="lang-ru" onclick="setLanguage('ru')">RU</button>
+    </div>
+
+    <div class="container">
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="screen active">
+            <div class="bruno-container">
+                <img src="brumba.png" alt="Bruno the Cat" class="bruno-img" id="bruno-welcome">
+            </div>
+            <h1 class="title" id="welcome-title">Bruno's Film Trivia</h1>
+            <p class="subtitle" id="welcome-subtitle">Test your movie knowledge!</p>
+            <div class="speech-bubble" id="welcome-speech">
+                Meow! I'm Bruno, your trivia host. Ready to test your film knowledge? Let's see how many you can get right!
+            </div>
+            <button class="btn" id="start-btn" onclick="startGame()">Start Game</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div class="bruno-container">
+                <img src="brumba.png" alt="Bruno the Cat" class="bruno-img" id="bruno-game">
+            </div>
+            <div class="speech-bubble" id="bruno-comment">
+                Let's see what you've got!
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+            <div class="score-display">
+                <span id="question-counter">Question 1/10</span>
+                <span id="score-counter">Score: 0</span>
+            </div>
+            <div class="question-card">
+                <p class="question-text" id="question-text"></p>
+            </div>
+            <div class="answers" id="answers"></div>
+            <button class="btn btn-secondary next-btn" id="next-btn" onclick="nextQuestion()" style="display: none;">
+                Next Question
+            </button>
+        </div>
+
+        <!-- Result Screen -->
+        <div id="result-screen" class="screen">
+            <div class="bruno-container">
+                <img src="brumba.png" alt="Bruno the Cat" class="bruno-img" id="bruno-result">
+            </div>
+            <h1 class="title" id="result-title">Game Over!</h1>
+            <div class="speech-bubble" id="result-comment">
+                Great job!
+            </div>
+            <div class="result-score" id="final-score">0</div>
+            <div class="result-label" id="result-label">out of <span id="total-questions">10</span> correct</div>
+            <div class="stars" id="stars"></div>
+            <button class="btn" id="restart-btn" onclick="restartGame()">Play Again</button>
+        </div>
+
+    </div>
+
+    <script>
+        // Internationalization
+        const i18n = {
+            en: {
+                title: "Bruno's Film Trivia",
+                subtitle: "Test your movie knowledge!",
+                welcomeSpeech: "Meow! I'm Bruno, your trivia host. Ready to test your film knowledge? Let's see how many you can get right!",
+                startBtn: "Start Game",
+                nextBtn: "Next Question",
+                gameOver: "Game Over!",
+                resultLabel: (total) => `out of ${total} correct`,
+                playAgain: "Play Again",
+                question: (current, total) => `Question ${current}/${total}`,
+                score: (points) => `Score: ${points}`,
+                comments: {
+                    start: [
+                        "Let's see what you've got!",
+                        "This one's interesting...",
+                        "Hmm, do you know this one?",
+                        "Here comes a good one!",
+                        "Ready? Here we go!"
+                    ],
+                    correct: [
+                        "Purrfect! You got it!",
+                        "Meow-velous answer!",
+                        "That's right! You're good!",
+                        "Correct! I knew you could do it!",
+                        "Yes! You're on fire!"
+                    ],
+                    wrong: [
+                        "Oops! Not quite right...",
+                        "Meow... that wasn't it.",
+                        "Ah, close but no fish treat!",
+                        "Don't worry, next one!",
+                        "That's okay, keep trying!"
+                    ]
+                },
+                results: {
+                    high: "Amazing! You're a true film expert! I'm so impressed!",
+                    medium: "Good job! You know your movies pretty well!",
+                    low: "Keep watching movies and try again! You'll do better!"
+                }
+            },
+            ru: {
+                title: "Кино-викторина Бруно",
+                subtitle: "Проверь свои знания о кино!",
+                welcomeSpeech: "Мяу! Я Бруно, ведущий викторины. Готов проверить свои знания о кино? Посмотрим, сколько правильных ответов ты дашь!",
+                startBtn: "Начать игру",
+                nextBtn: "Следующий вопрос",
+                gameOver: "Игра окончена!",
+                resultLabel: (total) => `из ${total} правильно`,
+                playAgain: "Играть снова",
+                question: (current, total) => `Вопрос ${current}/${total}`,
+                score: (points) => `Счёт: ${points}`,
+                comments: {
+                    start: [
+                        "Посмотрим, на что ты способен!",
+                        "Интересный вопрос...",
+                        "Хм, знаешь ли ты это?",
+                        "А вот и хороший вопрос!",
+                        "Готов? Поехали!"
+                    ],
+                    correct: [
+                        "Мур-р-велико! Правильно!",
+                        "Мяу-нифик! Отличный ответ!",
+                        "Верно! Ты молодец!",
+                        "Правильно! Я знал, что ты справишься!",
+                        "Да! Ты в ударе!"
+                    ],
+                    wrong: [
+                        "Упс! Не совсем верно...",
+                        "Мяу... это был не тот ответ.",
+                        "Эх, почти, но не то!",
+                        "Не переживай, следующий вопрос!",
+                        "Ничего, продолжай!"
+                    ]
+                },
+                results: {
+                    high: "Потрясающе! Ты настоящий киноэксперт! Я впечатлён!",
+                    medium: "Хорошая работа! Ты неплохо знаешь кино!",
+                    low: "Смотри больше фильмов и попробуй снова! У тебя получится лучше!"
+                }
+            }
+        };
+
+        // Game state
+        let currentLang = 'en';
+        let questions = [];
+        let currentQuestion = 0;
+        let score = 0;
+        let totalQuestions = 10;
+        let answered = false;
+
+        // Initialize Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+
+        // Set language
+        function setLanguage(lang) {
+            currentLang = lang;
+
+            // Update toggle buttons
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+            document.getElementById('lang-ru').classList.toggle('active', lang === 'ru');
+
+            // Update UI text
+            updateUIText();
+
+            // Save preference
+            localStorage.setItem('brunoTrivia_lang', lang);
+        }
+
+        // Update all UI text
+        function updateUIText() {
+            const t = i18n[currentLang];
+
+            // Welcome screen
+            document.getElementById('welcome-title').textContent = t.title;
+            document.getElementById('welcome-subtitle').textContent = t.subtitle;
+            document.getElementById('welcome-speech').textContent = t.welcomeSpeech;
+            document.getElementById('start-btn').textContent = t.startBtn;
+
+            // Game screen
+            document.getElementById('next-btn').textContent = t.nextBtn;
+            document.getElementById('question-counter').textContent = t.question(currentQuestion + 1, totalQuestions);
+            document.getElementById('score-counter').textContent = t.score(score);
+
+            // Result screen
+            document.getElementById('result-title').textContent = t.gameOver;
+            document.getElementById('result-label').innerHTML = t.resultLabel(`<span id="total-questions">${totalQuestions}</span>`);
+            document.getElementById('restart-btn').textContent = t.playAgain;
+        }
+
+        // Load questions for current language
+        function loadQuestions() {
+            return QUESTIONS_DATA[currentLang];
+        }
+
+        // Shuffle array
+        function shuffle(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        // Get random comment
+        function getComment(type) {
+            const comments = i18n[currentLang].comments[type];
+            return comments[Math.floor(Math.random() * comments.length)];
+        }
+
+        // Show screen
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Start game
+        function startGame() {
+            const allQuestions = loadQuestions();
+            questions = shuffle(allQuestions).slice(0, totalQuestions);
+            currentQuestion = 0;
+            score = 0;
+            answered = false;
+
+            showScreen('game-screen');
+            displayQuestion();
+        }
+
+        // Display current question
+        function displayQuestion() {
+            const q = questions[currentQuestion];
+            const t = i18n[currentLang];
+            answered = false;
+
+            // Update UI
+            document.getElementById('question-text').textContent = q.question;
+            document.getElementById('question-counter').textContent = t.question(currentQuestion + 1, totalQuestions);
+            document.getElementById('score-counter').textContent = t.score(score);
+            document.getElementById('progress').style.width = `${((currentQuestion) / totalQuestions) * 100}%`;
+            document.getElementById('bruno-comment').textContent = getComment('start');
+            document.getElementById('next-btn').style.display = 'none';
+
+            // Reset Bruno
+            const brunoImg = document.getElementById('bruno-game');
+            brunoImg.classList.remove('happy', 'sad');
+
+            // Create answer buttons
+            const answersContainer = document.getElementById('answers');
+            answersContainer.innerHTML = '';
+
+            q.answers.forEach((answer, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.textContent = answer;
+                btn.onclick = () => selectAnswer(index);
+                answersContainer.appendChild(btn);
+            });
+        }
+
+        // Handle answer selection
+        function selectAnswer(index) {
+            if (answered) return;
+            answered = true;
+
+            const q = questions[currentQuestion];
+            const t = i18n[currentLang];
+            const buttons = document.querySelectorAll('.answer-btn');
+            const brunoImg = document.getElementById('bruno-game');
+            const brunoComment = document.getElementById('bruno-comment');
+
+            // Disable all buttons
+            buttons.forEach(btn => btn.classList.add('disabled'));
+
+            // Mark correct and wrong
+            buttons[q.correct].classList.add('correct');
+
+            if (index === q.correct) {
+                score++;
+                brunoImg.classList.add('happy');
+                brunoComment.textContent = getComment('correct');
+            } else {
+                buttons[index].classList.add('wrong');
+                brunoImg.classList.add('sad');
+                brunoComment.textContent = getComment('wrong');
+            }
+
+            // Update score display
+            document.getElementById('score-counter').textContent = t.score(score);
+
+            // Show next button or end game
+            if (currentQuestion < totalQuestions - 1) {
+                document.getElementById('next-btn').style.display = 'block';
+            } else {
+                setTimeout(showResults, 1500);
+            }
+        }
+
+        // Next question
+        function nextQuestion() {
+            currentQuestion++;
+            displayQuestion();
+        }
+
+        // Show results
+        function showResults() {
+            showScreen('result-screen');
+
+            const t = i18n[currentLang];
+            const percentage = (score / totalQuestions) * 100;
+            const brunoImg = document.getElementById('bruno-result');
+            const resultComment = document.getElementById('result-comment');
+
+            document.getElementById('final-score').textContent = score;
+            document.getElementById('result-label').innerHTML = t.resultLabel(`<span id="total-questions">${totalQuestions}</span>`);
+            document.getElementById('progress').style.width = '100%';
+
+            // Stars based on score
+            let stars = '';
+            let starsCount = Math.ceil(percentage / 20);
+            for (let i = 0; i < 5; i++) {
+                stars += i < starsCount ? '\u2B50' : '\u2606';
+            }
+            document.getElementById('stars').textContent = stars;
+
+            // Bruno's reaction
+            brunoImg.classList.remove('happy', 'sad');
+            if (percentage >= 80) {
+                brunoImg.classList.add('happy');
+                resultComment.textContent = t.results.high;
+            } else if (percentage >= 50) {
+                resultComment.textContent = t.results.medium;
+            } else {
+                brunoImg.classList.add('sad');
+                resultComment.textContent = t.results.low;
+            }
+
+            // Telegram haptic feedback
+            if (window.Telegram && window.Telegram.WebApp) {
+                Telegram.WebApp.HapticFeedback.notificationOccurred(
+                    percentage >= 50 ? 'success' : 'warning'
+                );
+            }
+        }
+
+        // Restart game
+        function restartGame() {
+            showScreen('welcome-screen');
+        }
+
+        // Initialize with saved language or default
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('brunoTrivia_lang') || 'en';
+            setLanguage(savedLang);
+        });
+    </script>
+</body>
+</html>
