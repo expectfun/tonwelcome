@@ -182,7 +182,7 @@
 
             // Recalculate positions based on screen size
             GROUND_Y = CANVAS_HEIGHT - 80;
-            ROOMBA_Y = GROUND_Y - 25;
+            ROOMBA_Y = GROUND_Y - 5; // Roomba sits on the floor
             SCALE = Math.min(CANVAS_WIDTH / 375, 1.5); // Scale based on iPhone width
         }
         resizeCanvas();
