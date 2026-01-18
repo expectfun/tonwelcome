@@ -110,23 +110,23 @@
             50% { opacity: 0.5; transform: scale(0.98); }
         }
 
-        #scoreHUD {
+        #highScoreHUD {
             position: fixed;
             top: 20px;
             left: 20px;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 14px;
             color: #fff;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
             z-index: 10;
         }
 
-        #highScoreHUD {
+        #scoreHUD {
             position: fixed;
-            top: 20px;
-            right: 70px;
-            font-size: 14px;
-            color: #ffd700;
+            top: 42px;
+            left: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
             z-index: 10;
         }
@@ -153,6 +153,29 @@
         #muteButton:active {
             background: rgba(0, 0, 0, 0.7);
         }
+
+        #pauseButton {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        #pauseButton:active {
+            background: rgba(0, 0, 0, 0.7);
+        }
     </style>
 </head>
 <body>
@@ -161,6 +184,7 @@
         <div id="scoreHUD"></div>
         <div id="highScoreHUD"></div>
         <button id="muteButton" aria-label="Toggle sound">🔊</button>
+        <button id="pauseButton" aria-label="Pause game">⏸️</button>
         <div id="ui">
             <div class="overlay" id="startScreen">
                 <h1>Bruno's Roomba Ride</h1>
@@ -248,6 +272,18 @@
             isMuted = !isMuted;
             localStorage.setItem('brumbaMuted', isMuted);
             muteButton.textContent = isMuted ? '🔇' : '🔊';
+        });
+
+        // Pause button
+        let isPaused = false;
+        const pauseButton = document.getElementById('pauseButton');
+
+        pauseButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState === 'playing') {
+                isPaused = !isPaused;
+                pauseButton.textContent = isPaused ? '▶️' : '⏸️';
+            }
         });
 
         // Canvas setup
@@ -355,6 +391,8 @@
             gameSpeed = GAME_SPEED_INITIAL;
             speedLevel = 1;
             speedUpNotification = 0;
+            isPaused = false;
+            pauseButton.textContent = '⏸️';
 
             obstacles = [];
             obstacleTimer = 0;
@@ -483,7 +521,7 @@
 
         // Update game state
         function update() {
-            if (gameState !== 'playing') return;
+            if (gameState !== 'playing' || isPaused) return;
 
             // Update score
             score += 1;
@@ -1055,6 +1093,28 @@
 
                     ctx.strokeText(text, x, y);
                     ctx.fillText(text, x, y);
+                    ctx.restore();
+                }
+
+                // Draw pause indicator
+                if (isPaused) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 3;
+                    ctx.font = 'bold 36px -apple-system, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    ctx.strokeText('PAUSED', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+                    ctx.fillText('PAUSED', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+
+                    ctx.font = '18px -apple-system, sans-serif';
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fillText('Tap ▶️ to continue', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 40);
                     ctx.restore();
                 }
             } else {
