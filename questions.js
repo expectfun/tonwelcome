@@ -149,6 +149,56 @@ const QUESTIONS_DATA = {
             question: "In 'The Lord of the Rings', what is the name of Gandalf's horse?",
             answers: ["Brego", "Shadowfax", "Asfaloth", "Bill the Pony"],
             correct: 1
+        },
+        {
+            question: "What is the name of the cat in 'Breakfast at Tiffany's'?",
+            answers: ["Whiskers", "Cat", "Ginger", "Marmalade"],
+            correct: 1
+        },
+        {
+            question: "In 'Alien', what is the name of the cat aboard the Nostromo?",
+            answers: ["Jones", "Ripley", "Bishop", "Newt"],
+            correct: 0
+        },
+        {
+            question: "In which city is Disney's 'The Aristocats' set?",
+            answers: ["London", "Rome", "Paris", "Vienna"],
+            correct: 2
+        },
+        {
+            question: "What is the name of Argus Filch's cat in the Harry Potter films?",
+            answers: ["Crookshanks", "Mrs. Norris", "Scabbers", "Hedwig"],
+            correct: 1
+        },
+        {
+            question: "In the opening scene of 'The Godfather', what animal does Marlon Brando pet?",
+            answers: ["A dog", "A cat", "A bird", "A rabbit"],
+            correct: 1
+        },
+        {
+            question: "From which animated film franchise does 'Puss in Boots' originate?",
+            answers: ["Shrek", "Madagascar", "Ice Age", "Kung Fu Panda"],
+            correct: 0
+        },
+        {
+            question: "What is the name of the cat in Stephen King's 'Pet Sematary'?",
+            answers: ["Cujo", "Church", "Salem", "Binx"],
+            correct: 1
+        },
+        {
+            question: "In 'Hocus Pocus', what was Thackery Binx before he was turned into a cat?",
+            answers: ["A witch", "A boy", "A wizard", "A crow"],
+            correct: 1
+        },
+        {
+            question: "Who voiced the character of Garfield in the 2004 live-action film?",
+            answers: ["Jim Carrey", "Mike Myers", "Bill Murray", "Eddie Murphy"],
+            correct: 2
+        },
+        {
+            question: "In 'Coraline', what color is the mysterious cat that helps the protagonist?",
+            answers: ["Orange", "White", "Black", "Gray"],
+            correct: 2
         }
     ],
     ru: [
@@ -301,6 +351,56 @@ const QUESTIONS_DATA = {
             question: "Как зовут коня Гэндальфа во «Властелине колец»?",
             answers: ["Брего", "Светозар", "Асфалот", "Пони Билл"],
             correct: 1
+        },
+        {
+            question: "Как зовут кота в фильме «Завтрак у Тиффани»?",
+            answers: ["Уискерс", "Кот", "Рыжик", "Мармелад"],
+            correct: 1
+        },
+        {
+            question: "Как зовут кота на борту «Ностромо» в фильме «Чужой»?",
+            answers: ["Джонс", "Рипли", "Бишоп", "Ньют"],
+            correct: 0
+        },
+        {
+            question: "В каком городе происходит действие мультфильма «Коты-аристократы»?",
+            answers: ["Лондон", "Рим", "Париж", "Вена"],
+            correct: 2
+        },
+        {
+            question: "Как зовут кошку Аргуса Филча в фильмах о Гарри Поттере?",
+            answers: ["Живоглот", "Миссис Норрис", "Короста", "Букля"],
+            correct: 1
+        },
+        {
+            question: "Какое животное гладит Марлон Брандо в начальной сцене «Крёстного отца»?",
+            answers: ["Собаку", "Кота", "Птицу", "Кролика"],
+            correct: 1
+        },
+        {
+            question: "Из какого мультфильма появился персонаж «Кот в сапогах»?",
+            answers: ["Шрек", "Мадагаскар", "Ледниковый период", "Кунг-фу Панда"],
+            correct: 0
+        },
+        {
+            question: "Как зовут кота в фильме «Кладбище домашних животных» Стивена Кинга?",
+            answers: ["Куджо", "Чёрч", "Сэйлем", "Бинкс"],
+            correct: 1
+        },
+        {
+            question: "Кем был Таккери Бинкс до превращения в кота в фильме «Фокус-покус»?",
+            answers: ["Ведьмой", "Мальчиком", "Волшебником", "Вороном"],
+            correct: 1
+        },
+        {
+            question: "Кто озвучил Гарфилда в игровом фильме 2004 года?",
+            answers: ["Джим Керри", "Майк Майерс", "Билл Мюррей", "Эдди Мёрфи"],
+            correct: 2
+        },
+        {
+            question: "Какого цвета загадочный кот, помогающий героине в мультфильме «Коралина»?",
+            answers: ["Рыжий", "Белый", "Чёрный", "Серый"],
+            correct: 2
         }
     ]
 };
