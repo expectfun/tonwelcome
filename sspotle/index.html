@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Spotle: Угадай артиста</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">S-Spotle</div>
+            <div class="subtitle">Russian Music Edition</div>
+        </header>
+
+        <main>
+            <div class="game-info">
+                Попытка <span id="attempt-count">1</span> из 10
+            </div>
+
+            <div class="search-container">
+                <input type="text" id="artist-search" placeholder="Введите имя артиста..." autocomplete="off">
+                <div id="autocomplete-list" class="autocomplete-items"></div>
+            </div>
+
+            <div class="results-table-wrapper">
+                <table id="results-table">
+                    <thead>
+                        <tr>
+                            <th>Артист</th>
+                            <th>Дебют</th>
+                            <th>Участники</th>
+                            <th>Пол</th>
+                            <th>Жанр</th>
+                            <th>Регион</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body">
+                        <!-- Guesses will appear here -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <div id="game-over-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="modal-title">Победа!</h2>
+                <p id="modal-message"></p>
+                <button onclick="location.reload()">Играть снова (Завтра)</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

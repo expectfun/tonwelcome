@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Russpotle - The daily Russian music artist guessing game. Guess the artist in 10 tries!">
+  <title>Russpotle: Russian Artist Guessing Game</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Russpotle</h1>
+      <div class="header-buttons">
+        <button id="helpBtn" class="icon-btn" aria-label="Help">?</button>
+        <button id="statsBtn" class="icon-btn" aria-label="Statistics">📊</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="gameArea">
+        <div id="searchContainer">
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Type to search artists..." 
+            autocomplete="off"
+            disabled
+          >
+          <div id="autocomplete" class="autocomplete hidden"></div>
+        </div>
+
+        <div id="guesses"></div>
+
+        <div id="message" class="message hidden"></div>
+      </div>
+
+      <div id="gameOver" class="game-over hidden">
+        <h2 id="gameOverTitle"></h2>
+        <div id="targetArtist"></div>
+        <div id="nextGameTime"></div>
+        <button id="shareBtn" class="btn">Share Results</button>
+      </div>
+    </main>
+
+    <footer>
+      <p>Guess the artist in 10 tries</p>
+      <p>Guesses: <span id="guessCount">0</span>/10</p>
+    </footer>
+  </div>
+
+  <div id="helpModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>How to Play</h2>
+      <p>Guess the Russian artist in 10 tries.</p>
+      <p>Each guess will show you how close you are:</p>
+      <ul>
+        <li><span class="color-exact">Green</span> = Exact match</li>
+        <li><span class="color-close">Yellow</span> = Close match</li>
+        <li><span class="color-none">Gray</span> = No match</li>
+      </ul>
+      <h3>Attributes:</h3>
+      <ul>
+        <li><strong>Genre</strong> - Exact match only</li>
+        <li><strong>Nationality</strong> - Same region counts as close</li>
+        <li><strong>Gender</strong> - Exact match only</li>
+        <li><strong>Debut Year</strong> - Within 5 years counts as close</li>
+        <li><strong>Members</strong> - Exact match only</li>
+        <li><strong>Popularity</strong> - Within 50 spots counts as close</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="statsModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat">
+          <span id="statPlayed" class="stat-value">0</span>
+          <span class="stat-label">Played</span>
+        </div>
+        <div class="stat">
+          <span id="statWinPct" class="stat-value">0</span>
+          <span class="stat-label">Win %</span>
+        </div>
+        <div class="stat">
+          <span id="statStreak" class="stat-value">0</span>
+          <span class="stat-label">Current Streak</span>
+        </div>
+        <div class="stat">
+          <span id="statMaxStreak" class="stat-value">0</span>
+          <span class="stat-label">Max Streak</span>
+        </div>
+      </div>
+      <div class="guess-distribution">
+        <h3>Guess Distribution</h3>
+        <div id="distribution"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data/artists.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

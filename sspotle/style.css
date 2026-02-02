@@ -1,0 +1,228 @@
+:root {
+    --bg-color: #0b0214;
+    --card-bg: #1a0b2e;
+    --text-main: #ffffff;
+    --text-dim: #b3a3d3;
+    --accent: #9d50bb;
+    --accent-gradient: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%);
+    --green: #2ecc71;
+    --yellow: #f1c40f;
+    --grey: #34495e;
+    --border-color: #3d2b56;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding-top: 50px;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 800px;
+    text-align: center;
+    padding: 20px;
+}
+
+header {
+    margin-bottom: 40px;
+}
+
+.logo {
+    font-family: 'Outfit', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-top: -5px;
+}
+
+.game-info {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: var(--text-dim);
+}
+
+#attempt-count {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+/* Search Box */
+.search-container {
+    position: relative;
+    margin-bottom: 40px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#artist-search {
+    width: 100%;
+    padding: 15px 25px;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 50px;
+    color: white;
+    font-size: 1.1rem;
+    outline: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+#artist-search:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 15px rgba(157, 80, 187, 0.4);
+}
+
+.autocomplete-items {
+    position: absolute;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 20px;
+    right: 20px;
+    background: var(--card-bg);
+    border-radius: 0 0 15px 15px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.autocomplete-items div {
+    padding: 12px 20px;
+    cursor: pointer;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.autocomplete-items div:hover {
+    background-color: var(--border-color);
+}
+
+/* Results Table */
+.results-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    background: rgba(26, 11, 46, 0.5);
+    padding: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 5px;
+}
+
+th {
+    padding: 10px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    font-weight: 400;
+}
+
+td {
+    padding: 15px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    width: 16%;
+}
+
+.name-cell {
+    background: transparent !important;
+    text-align: left;
+    width: 20%;
+}
+
+/* Feedback Colors */
+.correct {
+    background-color: var(--green);
+}
+
+.close {
+    background-color: var(--yellow);
+    color: #000;
+}
+
+.incorrect {
+    background-color: var(--grey);
+}
+
+/* Icons/Indicators */
+.indicator {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 0.8rem;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: 20px;
+    border: 2px solid var(--accent);
+    text-align: center;
+    max-width: 400px;
+}
+
+.modal-content h2 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.modal-content button {
+    margin-top: 25px;
+    padding: 12px 30px;
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.modal-content button:hover {
+    transform: scale(1.05);
+}
