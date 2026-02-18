@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Falling Sand Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .material-btn {
+            padding: 10px 20px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        .material-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .material-btn.active {
+            border-color: #fff;
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        .sand { background: #e6c200; color: #333; }
+        .water { background: #0088ff; color: #fff; }
+        .fire { background: linear-gradient(45deg, #ff4400, #ff8800); color: #fff; }
+        .stone { background: #666; color: #fff; }
+        .magma { background: linear-gradient(45deg, #ff2200, #ff6600); color: #fff; }
+        .eraser { background: #ff0066; color: #fff; }
+        
+        .lang-btn {
+            padding: 8px 16px;
+            background: #444;
+            border: 2px solid #666;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .lang-btn:hover {
+            background: #555;
+            border-color: #888;
+        }
+        
+        canvas {
+            border: 3px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+        
+        .info {
+            margin-top: 15px;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .info span {
+            color: #fff;
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+        }
+        
+        .brush-size {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #333;
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+        
+        .brush-size input {
+            width: 100px;
+        }
+        
+        .brush-size span {
+            min-width: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1 data-i18n="title">🎨 Falling Sand Game</h1>
+    
+    <div class="controls">
+        <button class="material-btn sand active" data-material="sand" data-i18n="matSand">1 - Sand</button>
+        <button class="material-btn water" data-material="water" data-i18n="matWater">2 - Water</button>
+        <button class="material-btn fire" data-material="fire" data-i18n="matFire">3 - Fire</button>
+        <button class="material-btn stone" data-material="stone" data-i18n="matStone">4 - Stone</button>
+        <button class="material-btn magma" data-material="magma" data-i18n="matMagma">5 - Magma</button>
+        <button class="material-btn eraser" data-material="eraser" data-i18n="matEraser">6 - Eraser</button>
+    </div>
+    
+    <div class="controls">
+        <div class="brush-size">
+            <label data-i18n="brushSize">Brush size:</label>
+            <input type="range" id="brushSize" min="1" max="10" value="3">
+            <span id="brushValue">3</span>
+        </div>
+        <button class="lang-btn" id="langToggle">🇷🇺 Русский</button>
+    </div>
+    
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <div class="info">
+        <p data-i18n="hint">💡 Try combining different elements, create a <b>waterfall</b> or a <b>volcano</b> with magma inside</p>
+    </div>
+
+    <script>
+        // Localization
+        const i18n = {
+            en: {
+                title: '🎨 Falling Sand Game',
+                matSand: '1 - Sand',
+                matWater: '2 - Water',
+                matFire: '3 - Fire',
+                matStone: '4 - Stone',
+                matMagma: '5 - Magma',
+                matEraser: '6 - Eraser',
+                brushSize: 'Brush size:',
+                hint: '💡 Try combining different elements, create a <b>waterfall</b> or a <b>volcano</b> with magma inside',
+                langLabel: '🇷🇺 Русский'
+            },
+            ru: {
+                title: '🎨 Игра стихий',
+                matSand: '1 - Песок',
+                matWater: '2 - Вода',
+                matFire: '3 - Огонь',
+                matStone: '4 - Камень',
+                matMagma: '5 - Магма',
+                matEraser: '6 - Ластик',
+                brushSize: 'Размер кисти:',
+                hint: '💡 Попробуй сочетать разные элементы, создай <b>водопад</b> или <b>вулкан</b> с магмой внутри',
+                langLabel: '🇬🇧 English'
+            }
+        };
+
+        let currentLang = 'en';
+
+        function updateLanguage() {
+            const texts = i18n[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (texts[key]) {
+                    el.innerHTML = texts[key];
+                }
+            });
+            document.getElementById('langToggle').textContent = texts.langLabel;
+            document.documentElement.lang = currentLang;
+        }
+
+        document.getElementById('langToggle').addEventListener('click', () => {
+            currentLang = currentLang === 'en' ? 'ru' : 'en';
+            updateLanguage();
+        });
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Grid settings
+        const CELL_SIZE = 8;
+        const COLS = canvas.width / CELL_SIZE;
+        const ROWS = canvas.height / CELL_SIZE;
+        
+        // Materials
+        const EMPTY = 0;
+        const SAND = 1;
+        const WATER = 2;
+        const FIRE = 3;
+        const STONE = 4;
+        const MAGMA = 5;
+        const SMOKE = 6;
+        
+        // Colors
+        const COLORS = {
+            [EMPTY]: null,
+            [SAND]: '#e6c200',
+            [WATER]: '#0088ff',
+            [FIRE]: ['#ff4400', '#ff6600', '#ff8800', '#ffaa00'],
+            [STONE]: '#666666',
+            [MAGMA]: '#ff3300',
+            [SMOKE]: ['#555555', '#666666', '#777777', '#888888']
+        };
+        
+        // Grid
+        let grid = new Array(COLS).fill(null).map(() => new Array(ROWS).fill(EMPTY));
+        let fireColors = new Array(COLS).fill(null).map(() => new Array(ROWS).fill(0));
+        let fireLife = new Array(COLS).fill(null).map(() => new Array(ROWS).fill(0));
+        
+        let pendingFire = []; // For magma to spawn fire next frame
+        let smokeLife = new Array(COLS).fill(null).map(() => new Array(ROWS).fill(0));
+        
+        // State
+        let currentMaterial = SAND;
+        let isDrawing = false;
+        let brushSize = 3;
+        
+        // Input handling
+        const materialBtns = document.querySelectorAll('.material-btn');
+        const brushSizeInput = document.getElementById('brushSize');
+        const brushValue = document.getElementById('brushValue');
+        
+        function setMaterial(mat) {
+            console.log("setMaterial called:", mat);
+            currentMaterial = mat;
+            materialBtns.forEach(btn => {
+                btn.classList.remove('active');
+                if (parseMaterial(btn.dataset.material) === mat) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        function parseMaterial(name) {
+            switch(name) {
+                case 'sand': return SAND;
+                case 'water': return WATER;
+                case 'fire': return FIRE;
+                case 'stone': return STONE;
+                case 'magma': return MAGMA;
+                case 'eraser': return EMPTY;
+                default: return SAND;
+            }
+        }
+        
+        materialBtns.forEach(btn => {
+            btn.addEventListener('click', () => setMaterial(parseMaterial(btn.dataset.material)));
+        });
+        
+        brushSizeInput.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            brushValue.textContent = brushSize;
+        });
+        
+        // Keyboard shortcuts
+        // Keyboard shortcuts removed
+        
+        // Mouse handling
+        function getGridPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+            return { x, y };
+        }
+        
+        function drawAt(x, y) {
+            const radius = brushSize;
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    if (dx*dx + dy*dy <= radius*radius) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+                            if (currentMaterial === EMPTY || grid[nx][ny] === EMPTY) {
+                                grid[nx][ny] = currentMaterial;
+                                if (currentMaterial === FIRE) {
+                                    fireLife[nx][ny] = 30 + Math.random() * 20;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const pos = getGridPos(e);
+            drawAt(pos.x, pos.y);
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                const pos = getGridPos(e);
+                drawAt(pos.x, pos.y);
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+        });
+        
+        // Simulation
+        function update() {
+            // Process from bottom to top for falling things
+            for (let y = ROWS - 2; y >= 0; y--) {
+                // Randomize x direction for natural look
+                const leftToRight = Math.random() > 0.5;
+                for (let i = 0; i < COLS; i++) {
+                    const x = leftToRight ? i : COLS - 1 - i;
+                    const material = grid[x][y];
+                    
+                    if (material === EMPTY) continue;
+                    
+                    // Sand physics
+                    if (material === SAND) {
+                        // Try to fall down
+                        if (grid[x][y + 1] === EMPTY) {
+                            grid[x][y + 1] = SAND;
+                            grid[x][y] = EMPTY;
+                        }
+                        // Try to fall diagonally
+                        else if (x > 0 && grid[x - 1][y + 1] === EMPTY) {
+                            grid[x - 1][y + 1] = SAND;
+                            grid[x][y] = EMPTY;
+                        }
+                        else if (x < COLS - 1 && grid[x + 1][y + 1] === EMPTY) {
+                            grid[x + 1][y + 1] = SAND;
+                            grid[x][y] = EMPTY;
+                        }
+                    }
+                    
+                    // Water physics
+                    if (material === WATER) {
+                        // Try to fall down
+                        if (grid[x][y + 1] === EMPTY) {
+                            grid[x][y + 1] = WATER;
+                            grid[x][y] = EMPTY;
+                        }
+                        // Try to fall diagonally
+                        else if (x > 0 && grid[x - 1][y + 1] === EMPTY) {
+                            grid[x - 1][y + 1] = WATER;
+                            grid[x][y] = EMPTY;
+                        }
+                        else if (x < COLS - 1 && grid[x + 1][y + 1] === EMPTY) {
+                            grid[x + 1][y + 1] = WATER;
+                            grid[x][y] = EMPTY;
+                        }
+                        // Try to spread horizontally
+                        else {
+                            const dir = Math.random() > 0.5 ? 1 : -1;
+                            if (x + dir >= 0 && x + dir < COLS && grid[x + dir][y] === EMPTY) {
+                                grid[x + dir][y] = WATER;
+                                grid[x][y] = EMPTY;
+                            }
+                        }
+                    }
+
+                    // Stone physics (falls straight down like heavy rock)
+                    if (material === STONE) {
+                        // Just fall straight down
+                        if (grid[x][y + 1] === EMPTY) {
+                            grid[x][y + 1] = STONE;
+                            grid[x][y] = EMPTY;
+                        }
+                    }
+                    
+
+                    // Magma physics (falls like stone + emits fire upward)
+                    if (material === MAGMA) {
+                        // Fall down like heavy rock
+                        if (grid[x][y + 1] === EMPTY) {
+                            grid[x][y + 1] = MAGMA;
+                            grid[x][y] = EMPTY;
+                        }
+                        // Emit fire upward
+                        if (y > 0 && grid[x][y - 1] === EMPTY && Math.random() > 0.7) {
+                            grid[x][y - 1] = FIRE;
+                            fireLife[x][y - 1] = 25 + Math.random() * 15;
+                        }
+                        // Emit fire diagonally
+                        if (y > 0 && x > 0 && grid[x - 1][y - 1] === EMPTY && Math.random() > 0.85) {
+                            grid[x - 1][y - 1] = FIRE;
+                            fireLife[x - 1][y - 1] = 20 + Math.random() * 10;
+                        }
+                        if (y > 0 && x < COLS - 1 && grid[x + 1][y - 1] === EMPTY && Math.random() > 0.85) {
+                            grid[x + 1][y - 1] = FIRE;
+                            fireLife[x + 1][y - 1] = 20 + Math.random() * 10;
+                        }
+                    }
+                }
+            }
+            
+            // Process fire separately from top to bottom
+            // This prevents fire from "jumping" multiple cells in one frame
+            for (let y = 0; y < ROWS; y++) {
+                const leftToRight = Math.random() > 0.5;
+                for (let i = 0; i < COLS; i++) {
+                    const x = leftToRight ? i : COLS - 1 - i;
+                    const material = grid[x][y];
+                    
+                    if (material !== FIRE) continue;
+                    
+                    fireLife[x][y]--;
+                    
+                    // Fire goes out
+                    if (fireLife[x][y] <= 0) {
+                        grid[x][y] = EMPTY;
+                        continue;
+                    }
+                    
+                    // Fire rises
+                    if (y > 0) {
+                        if (grid[x][y - 1] === EMPTY) {
+                            grid[x][y - 1] = FIRE;
+                            fireLife[x][y - 1] = fireLife[x][y];
+                            grid[x][y] = EMPTY;
+                            fireLife[x][y] = 0;
+                        }
+                        // Spread diagonally up
+                        else if (x > 0 && grid[x - 1][y - 1] === EMPTY && Math.random() > 0.5) {
+                            grid[x - 1][y - 1] = FIRE;
+                            fireLife[x - 1][y - 1] = fireLife[x][y] * 0.8;
+                        }
+                        else if (x < COLS - 1 && grid[x + 1][y - 1] === EMPTY && Math.random() > 0.5) {
+                            grid[x + 1][y - 1] = FIRE;
+                            fireLife[x + 1][y - 1] = fireLife[x][y] * 0.8;
+                        }
+                    }
+                    
+                    // Fire burns things below
+                    if (y < ROWS - 1) {
+                        const below = grid[x][y + 1];
+                        if (below === SAND && Math.random() > 0.95) {
+                            grid[x][y + 1] = FIRE;
+                            fireLife[x][y + 1] = 20;
+                        }
+                    }
+                    
+                    // Fire turns into smoke when dying
+                    if (fireLife[x][y] < 10 && Math.random() > 0.7) {
+                        grid[x][y] = SMOKE;
+                        smokeLife[x][y] = 15 + Math.random() * 10;
+                        fireLife[x][y] = 0;
+                    }
+                }
+            }
+            
+            // Process smoke (rises and dissipates)
+            for (let y = 0; y < ROWS; y++) {
+                const leftToRight = Math.random() > 0.5;
+                for (let i = 0; i < COLS; i++) {
+                    const x = leftToRight ? i : COLS - 1 - i;
+                    if (grid[x][y] !== SMOKE) continue;
+                    
+                    smokeLife[x][y]--;
+                    if (smokeLife[x][y] <= 0) {
+                        grid[x][y] = EMPTY;
+                        continue;
+                    }
+                    
+                    // Smoke rises with turbulence
+                    if (y > 0) {
+                        const drift = Math.random() > 0.6 ? 1 : (Math.random() < 0.4 ? -1 : 0);
+                        const nx = x + drift;
+                        if (nx >= 0 && nx < COLS && grid[nx][y - 1] === EMPTY) {
+                            grid[nx][y - 1] = SMOKE;
+                            smokeLife[nx][y - 1] = smokeLife[x][y];
+                            grid[x][y] = EMPTY;
+                            smokeLife[x][y] = 0;
+                        } else if (grid[x][y - 1] === EMPTY) {
+                            grid[x][y - 1] = SMOKE;
+                            smokeLife[x][y - 1] = smokeLife[x][y];
+                            grid[x][y] = EMPTY;
+                            smokeLife[x][y] = 0;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let x = 0; x < COLS; x++) {
+                for (let y = 0; y < ROWS; y++) {
+                    const material = grid[x][y];
+                    if (material === EMPTY) continue;
+                    
+                    let color = COLORS[material];
+                    
+                    // Animate fire colors
+                    if (material === FIRE) {
+                        const life = fireLife[x][y];
+                        const intensity = life / 50;
+                        const colorIndex = Math.floor((1 - intensity) * (COLORS[FIRE].length - 1));
+                        color = COLORS[FIRE][Math.min(colorIndex, COLORS[FIRE].length - 1)];
+                    }
+                    
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE - 0.5, CELL_SIZE - 0.5);
+                }
+            }
+        }
+        
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+        
+        // Start
+        loop();
+    </script>
+</body>
+</html>
