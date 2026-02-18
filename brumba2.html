@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kodik Unicorn Sprint</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background: #091118;
+            color: #dcffe9;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #gameContainer {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(180deg, #0b1320 0%, #132735 55%, #122017 100%);
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        #hud {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .panel {
+            background: rgba(5, 13, 19, 0.78);
+            border: 3px solid #28d96f;
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.42);
+            padding: 10px;
+        }
+
+        #stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .stat-label {
+            color: #77b694;
+            font-size: 9px;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 12px;
+            color: #dcffe9;
+        }
+
+        #stageBadge {
+            align-self: start;
+            background: linear-gradient(90deg, #28d96f 0%, #1bb8ff 100%);
+            color: #05210f;
+            border: 3px solid #0e5629;
+            box-shadow: 0 3px 0 #063017;
+            padding: 12px 10px;
+            min-width: 154px;
+            text-align: center;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+
+        #milestoneWrap {
+            position: fixed;
+            top: 106px;
+            left: 16px;
+            right: 16px;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #milestoneBar {
+            height: 14px;
+            border: 3px solid #28d96f;
+            background: rgba(5, 13, 19, 0.82);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #milestoneFill {
+            height: 100%;
+            width: 0%;
+            background: repeating-linear-gradient(
+                90deg,
+                #2de67a 0px,
+                #2de67a 10px,
+                #1bb8ff 10px,
+                #1bb8ff 20px
+            );
+        }
+
+        #milestoneText {
+            margin-top: 8px;
+            font-size: 9px;
+            color: #95d6b4;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        #quote {
+            position: fixed;
+            top: 152px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: min(92vw, 560px);
+            text-align: center;
+            font-size: 10px;
+            line-height: 1.5;
+            color: #111;
+            background: #d8ffe5;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+            padding: 10px 12px;
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        #quote.show {
+            opacity: 1;
+        }
+
+        #controls {
+            position: fixed;
+            top: 78px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 50;
+        }
+
+        .ctrl-btn {
+            width: 42px;
+            height: 42px;
+            border: 3px solid #28d96f;
+            background: rgba(5, 13, 19, 0.86);
+            color: #dcffe9;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn:active {
+            transform: translateY(1px);
+        }
+
+        #ui {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 40;
+        }
+
+        #ui.hidden {
+            display: none;
+        }
+
+        .overlay {
+            width: min(92vw, 560px);
+            background: rgba(8, 14, 20, 0.9);
+            border: 4px solid #2de67a;
+            box-shadow: 0 0 0 5px #05120a;
+            padding: 24px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2de67a;
+            font-size: clamp(16px, 2vw, 24px);
+            line-height: 1.45;
+            margin-bottom: 14px;
+            text-shadow: 3px 3px 0 #07361a;
+        }
+
+        .subtitle {
+            color: #a6d8bc;
+            font-size: 10px;
+            line-height: 1.8;
+            margin-bottom: 18px;
+        }
+
+        .score-display {
+            font-size: 20px;
+            color: #dcffe9;
+            margin: 14px 0;
+        }
+
+        .tap-hint {
+            font-size: 10px;
+            color: #94d2b2;
+            animation: blink 1.1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.3; }
+        }
+
+        @media (max-width: 760px) {
+            #stats {
+                grid-template-columns: 1fr;
+            }
+
+            #stageBadge {
+                min-width: 116px;
+                padding: 10px 8px;
+                font-size: 9px;
+            }
+
+            #quote {
+                top: 182px;
+                font-size: 9px;
+            }
+
+            #controls {
+                top: 98px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="hud">
+            <div class="panel" id="stats">
+                <div>
+                    <div class="stat-label">VALUATION</div>
+                    <div class="stat-value" id="valuationHUD">$0</div>
+                </div>
+                <div>
+                    <div class="stat-label">USERS</div>
+                    <div class="stat-value" id="usersHUD">45%</div>
+                </div>
+                <div>
+                    <div class="stat-label">BEST VALUATION</div>
+                    <div class="stat-value" id="bestHUD">0</div>
+                </div>
+                <div>
+                    <div class="stat-label">CODE QUALITY</div>
+                    <div class="stat-value" id="qualityHUD">70%</div>
+                </div>
+            </div>
+            <div id="stageBadge">PRE-SEED</div>
+        </div>
+
+        <div id="milestoneWrap">
+            <div id="milestoneBar"><div id="milestoneFill"></div></div>
+            <div id="milestoneText">До SEED: +$50.0M</div>
+        </div>
+
+        <div id="quote"></div>
+
+        <div id="controls">
+            <button id="muteButton" class="ctrl-btn" aria-label="Toggle sound">🔊</button>
+            <button id="pauseButton" class="ctrl-btn" aria-label="Pause game">⏸</button>
+        </div>
+
+        <div id="ui">
+            <div class="overlay" id="startScreen">
+                <h1>KODIK STARTUP SPRINT</h1>
+                <p class="subtitle">
+                    Kodik мчит по runway на робо-платформе.<br>
+                    Избегайте техдолга и прод-инцидентов.<br>
+                    Собирайте clean PR, PMF и инвест-чек.<br>
+                    Цель: прокачать valuation до unicorn.
+                </p>
+                <p class="tap-hint">TAP / SPACE TO START</p>
+            </div>
+            <div class="overlay" id="gameOverScreen" style="display: none;">
+                <h1 id="finalTitle">RUN COLLAPSED</h1>
+                <p class="score-display" id="finalScore">$0</p>
+                <p class="subtitle" id="finalStage">Этап: PRE-SEED</p>
+                <p class="tap-hint">TAP / SPACE TO RETRY</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        const muteButton = document.getElementById('muteButton');
+        const pauseButton = document.getElementById('pauseButton');
+
+        let isMuted = localStorage.getItem('kodikUnicornMuted') === 'true';
+        let isPaused = false;
+        muteButton.textContent = isMuted ? '🔇' : '🔊';
+
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+
+            if (type === 'jump') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(360, now);
+                osc.frequency.exponentialRampToValueAtTime(700, now + 0.09);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+                return;
+            }
+
+            if (type === 'crash') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(170, now);
+                osc.frequency.exponentialRampToValueAtTime(55, now + 0.25);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.27);
+                return;
+            }
+
+            if (type === 'stage') {
+                const notes = [420, 560, 740];
+                notes.forEach((freq, i) => {
+                    const t = now + i * 0.08;
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, t);
+                    gain.gain.setValueAtTime(0.001, t);
+                    gain.gain.exponentialRampToValueAtTime(0.07, t + 0.01);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(t);
+                    osc.stop(t + 0.12);
+                });
+                return;
+            }
+
+            if (type === 'coin') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(680, now);
+                osc.frequency.exponentialRampToValueAtTime(1080, now + 0.08);
+                gain.gain.setValueAtTime(0.06, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.11);
+            }
+        }
+
+        muteButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isMuted = !isMuted;
+            localStorage.setItem('kodikUnicornMuted', String(isMuted));
+            muteButton.textContent = isMuted ? '🔇' : '🔊';
+        });
+
+        pauseButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState !== 'playing') return;
+            isPaused = !isPaused;
+            pauseButton.textContent = isPaused ? '▶' : '⏸';
+        });
+
+        const valuationHUD = document.getElementById('valuationHUD');
+        const usersHUD = document.getElementById('usersHUD');
+        const bestHUD = document.getElementById('bestHUD');
+        const qualityHUD = document.getElementById('qualityHUD');
+        const stageBadge = document.getElementById('stageBadge');
+        const milestoneFill = document.getElementById('milestoneFill');
+        const milestoneText = document.getElementById('milestoneText');
+        const quoteEl = document.getElementById('quote');
+
+        let W = window.innerWidth;
+        let H = window.innerHeight;
+        let SCALE = 1;
+        let GROUND_Y = 0;
+        let BOARD_Y = 0;
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            W = window.innerWidth;
+            H = window.innerHeight;
+            SCALE = Math.min(W / 420, 1.8);
+            GROUND_Y = H - Math.max(70, Math.floor(92 * SCALE));
+            BOARD_Y = GROUND_Y - 4;
+
+            canvas.width = Math.floor(W * dpr);
+            canvas.height = Math.floor(H * dpr);
+            canvas.style.width = W + 'px';
+            canvas.style.height = H + 'px';
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.imageSmoothingEnabled = false;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const GRAVITY = 0.78;
+        const JUMP_FORCE = -15.2;
+        const BASE_SPEED = 5.2;
+
+        const stages = [
+            { threshold: 0, stage: 'PRE-SEED', speedFactor: 1.00 },
+            { threshold: 50_000_000, stage: 'SEED', speedFactor: 1.08 },
+            { threshold: 200_000_000, stage: 'SERIES A', speedFactor: 1.16 },
+            { threshold: 500_000_000, stage: 'SERIES B', speedFactor: 1.24 },
+            { threshold: 1_000_000_000, stage: 'UNICORN', speedFactor: 1.30 }
+        ];
+
+        const stageQuotes = {
+            'PRE-SEED': [
+                '"MVP собран. Погнали за первыми юзерами."',
+                '"Пишем быстро, но без мусора в коде."'
+            ],
+            'SEED': [
+                '"Раунд закрыт. Теперь бы не развалиться."',
+                '"Появились деньги. И новые дедлайны."'
+            ],
+            'SERIES A': [
+                '"Рост прёт. Техдолг тоже."',
+                '"Стабильность и фичи дерутся каждый день."'
+            ],
+            'SERIES B': [
+                '"Масштабируемся. Ошибка теперь стоит дороже."',
+                '"Всё летит быстро. Нужен холодный код."'
+            ],
+            'UNICORN': [
+                '"🦄 ЕДИНОРОГ: valuation > $1B"',
+                '"Дотащили до единорога. Это было мясо."'
+            ]
+        };
+
+        let gameState = 'start';
+        let runTicks = 0;
+        let valuation = 0;
+        let users = 45;
+        let codeQuality = 70;
+        let bestValuation = Number(localStorage.getItem('kodikUnicornBestValuation') || 0);
+        let speed = BASE_SPEED;
+        let speedTier = 0;
+        let stage = 'PRE-SEED';
+        let quoteTimeout = null;
+        let aiBoostTimer = 0;
+        let passiveDecayTimer = 0;
+
+        const board = { width: 98, height: 16, wheelTick: 0 };
+
+        const hero = {
+            width: 66,
+            height: 66,
+            y: 0,
+            vy: 0,
+            jumping: false
+        };
+
+        const kodikImg = new Image();
+        kodikImg.src = 'kodik.png';
+
+        let floorOffset = 0;
+        let skylineOffset = 0;
+        let obstacles = [];
+        let pickups = [];
+        let particles = [];
+        let spawnTimer = 0;
+        let pickupTimer = 0;
+        let minSpawn = 90;
+        let lastType = null;
+
+        function getHeroX() {
+            return 44 * SCALE;
+        }
+
+        function getBoardX() {
+            return getHeroX() + (hero.width * SCALE) / 2 - (board.width * SCALE) / 2;
+        }
+
+        function resetRun() {
+            runTicks = 0;
+            valuation = 0;
+            users = 45;
+            codeQuality = 70;
+            speed = BASE_SPEED;
+            speedTier = 0;
+            aiBoostTimer = 0;
+            passiveDecayTimer = 0;
+            isPaused = false;
+            pauseButton.textContent = '⏸';
+            stage = 'PRE-SEED';
+            hero.vy = 0;
+            hero.jumping = false;
+            hero.y = BOARD_Y - board.height - hero.height * SCALE;
+            floorOffset = 0;
+            skylineOffset = 0;
+            board.wheelTick = 0;
+            obstacles = [];
+            pickups = [];
+            particles = [];
+            spawnTimer = 0;
+            pickupTimer = 0;
+            minSpawn = 90;
+            lastType = null;
+            stageBadge.textContent = stage;
+            renderProgress();
+            updateHUD();
+        }
+
+        function showQuote() {
+            const pack = stageQuotes[stage] || ['"Держим темп."'];
+            const text = pack[Math.floor(Math.random() * pack.length)];
+            quoteEl.textContent = text;
+            quoteEl.classList.add('show');
+            if (quoteTimeout) clearTimeout(quoteTimeout);
+            quoteTimeout = setTimeout(() => quoteEl.classList.remove('show'), 2100);
+        }
+
+        function spawnObstacle() {
+            const weights = {
+                techDebt: 0.34,
+                prodIncident: 0.26,
+                scopeCreep: 0.20,
+                investorPivot: 0.20
+            };
+            if (codeQuality < 20) {
+                weights.techDebt *= 1.1;
+                weights.prodIncident *= 1.1;
+            }
+            if (lastType === 'techDebt' || lastType === 'prodIncident') {
+                weights.scopeCreep *= 1.08;
+                weights.investorPivot *= 1.06;
+            }
+            if (lastType === 'scopeCreep' || lastType === 'investorPivot') {
+                weights.techDebt *= 1.08;
+                weights.prodIncident *= 1.06;
+            }
+
+            const total = Object.values(weights).reduce((a, b) => a + b, 0);
+            let pick = Math.random() * total;
+            let type = 'techDebt';
+            for (const [key, weight] of Object.entries(weights)) {
+                pick -= weight;
+                if (pick <= 0) {
+                    type = key;
+                    break;
+                }
+            }
+
+            if (type === 'techDebt' || type === 'prodIncident') {
+                const isProd = type === 'prodIncident';
+                obstacles.push({
+                    type,
+                    x: W + 30,
+                    y: GROUND_Y - (isProd ? 48 : 44) * SCALE,
+                    width: (isProd ? 62 : 58) * SCALE,
+                    height: (isProd ? 48 : 44) * SCALE
+                });
+            } else {
+                const isPivot = type === 'investorPivot';
+                obstacles.push({
+                    type,
+                    x: W + 30,
+                    y: GROUND_Y - (isPivot ? 174 : 168) * SCALE,
+                    width: (isPivot ? 110 : 104) * SCALE,
+                    height: 20 * SCALE,
+                    legHeight: (isPivot ? 174 : 168) * SCALE
+                });
+            }
+            lastType = type;
+        }
+
+        function spawnPickup() {
+            const lowLane = BOARD_Y - board.height - 18 * SCALE;
+            const midLane = BOARD_Y - board.height - 46 * SCALE;
+            const highLane = BOARD_Y - board.height - 74 * SCALE;
+            const lanes = [lowLane, midLane, highLane];
+            const lane = lanes[Math.floor(Math.random() * lanes.length)];
+            const pickupWeights = {
+                cleanPR: 0.30,
+                userLove: 0.30,
+                pmfSignal: 0.20,
+                aiBoost: 0.12,
+                investorCheck: 0.08
+            };
+            if (users < 20) {
+                pickupWeights.investorCheck *= 0.6;
+            }
+            const total = Object.values(pickupWeights).reduce((a, b) => a + b, 0);
+            let pick = Math.random() * total;
+            let type = 'cleanPR';
+            for (const [key, weight] of Object.entries(pickupWeights)) {
+                pick -= weight;
+                if (pick <= 0) {
+                    type = key;
+                    break;
+                }
+            }
+            pickups.push({
+                type,
+                x: W + 30,
+                y: lane,
+                size: 18 * SCALE,
+                tick: Math.random() * Math.PI * 2
+            });
+        }
+
+        function spawnDust(x, y, n, color) {
+            for (let i = 0; i < n; i++) {
+                particles.push({
+                    x,
+                    y,
+                    vx: (Math.random() - 0.5) * 2.7,
+                    vy: -Math.random() * 1.9,
+                    life: 20 + Math.random() * 16,
+                    size: 2 + Math.random() * 3,
+                    color
+                });
+            }
+        }
+
+        function jump() {
+            if (!hero.jumping && gameState === 'playing') {
+                hero.vy = JUMP_FORCE * SCALE;
+                hero.jumping = true;
+                spawnDust(getBoardX() + board.width * SCALE * 0.55, BOARD_Y, 8, '#2de67a');
+                playSound('jump');
+            }
+        }
+
+        function handleAction(e) {
+            if (e) e.preventDefault();
+            initAudio();
+            if (gameState === 'start') {
+                gameState = 'playing';
+                document.getElementById('ui').classList.add('hidden');
+                resetRun();
+                showQuote();
+                return;
+            }
+            if (gameState === 'gameover') {
+                gameState = 'playing';
+                document.getElementById('gameOverScreen').style.display = 'none';
+                document.getElementById('ui').classList.add('hidden');
+                resetRun();
+                showQuote();
+                return;
+            }
+            jump();
+        }
+
+        canvas.addEventListener('click', handleAction);
+        canvas.addEventListener('touchstart', handleAction, { passive: false });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (gameState === 'playing') jump();
+                else handleAction();
+            }
+            if (e.code === 'KeyP' && gameState === 'playing') {
+                e.preventDefault();
+                isPaused = !isPaused;
+                pauseButton.textContent = isPaused ? '▶' : '⏸';
+            }
+            if (e.code === 'KeyM') {
+                e.preventDefault();
+                isMuted = !isMuted;
+                localStorage.setItem('kodikUnicornMuted', String(isMuted));
+                muteButton.textContent = isMuted ? '🔇' : '🔊';
+            }
+        });
+
+        function formatMoney(num) {
+            if (num >= 1e9) return '$' + (num / 1e9).toFixed(2) + 'B';
+            if (num >= 1e6) return '$' + (num / 1e6).toFixed(1) + 'M';
+            return '$' + num.toLocaleString('en-US');
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function getStageConfig(currentStage = stage) {
+            return stages.find((s) => s.stage === currentStage) || stages[0];
+        }
+
+        function updateStage() {
+            let nextStage = stage;
+            for (let i = stages.length - 1; i >= 0; i--) {
+                if (valuation >= stages[i].threshold) {
+                    nextStage = stages[i].stage;
+                    break;
+                }
+            }
+
+            if (nextStage !== stage) {
+                stage = nextStage;
+                stageBadge.textContent = stage;
+                showQuote();
+                spawnDust(getHeroX() + 18, hero.y + 20, 16, '#ffffff');
+                playSound('stage');
+            }
+            renderProgress();
+        }
+
+        function renderProgress() {
+            const idx = stages.findIndex((s) => s.stage === stage);
+            const current = stages[idx];
+            const next = stages[idx + 1];
+            if (!next) {
+                milestoneFill.style.width = '100%';
+                milestoneText.textContent = 'Цель взята: UNICORN';
+                return;
+            }
+
+            const progress = ((valuation - current.threshold) / (next.threshold - current.threshold)) * 100;
+            milestoneFill.style.width = Math.max(0, Math.min(progress, 100)) + '%';
+            const remainingValue = Math.max(0, next.threshold - valuation);
+            milestoneText.textContent = `До ${next.stage}: +${formatMoney(remainingValue)}`;
+        }
+
+        function updateHUD() {
+            usersHUD.textContent = `${Math.round(users)}%`;
+            qualityHUD.textContent = `${Math.round(codeQuality)}%`;
+            valuationHUD.textContent = formatMoney(Math.floor(valuation));
+            bestHUD.textContent = formatMoney(Math.floor(bestValuation));
+            stageBadge.textContent = stage;
+        }
+
+        function applyObstacleHit(type) {
+            if (type === 'techDebt') {
+                codeQuality = clamp(codeQuality - 12, 0, 100);
+                spawnDust(getHeroX() + 28 * SCALE, hero.y + 24 * SCALE, 10, '#ff8f8f');
+                return;
+            }
+            if (type === 'prodIncident') {
+                users = clamp(users - 10, 0, 100);
+                spawnDust(getHeroX() + 30 * SCALE, hero.y + 28 * SCALE, 10, '#ff6e6e');
+                return;
+            }
+            if (type === 'scopeCreep') {
+                codeQuality = clamp(codeQuality - 8, 0, 100);
+                users = clamp(users - 4, 0, 100);
+                spawnDust(getHeroX() + 30 * SCALE, hero.y + 20 * SCALE, 12, '#ff9b7c');
+                return;
+            }
+            users = clamp(users - 6, 0, 100);
+            valuation = Math.max(0, valuation * 0.97);
+            spawnDust(getHeroX() + 30 * SCALE, hero.y + 20 * SCALE, 12, '#ffb48f');
+        }
+
+        function applyPickupEffect(type) {
+            if (type === 'cleanPR') {
+                codeQuality = clamp(codeQuality + 10, 0, 100);
+            } else if (type === 'userLove') {
+                users = clamp(users + 8, 0, 100);
+            } else if (type === 'pmfSignal') {
+                users = clamp(users + 12, 0, 100);
+                valuation *= 1.02;
+            } else if (type === 'aiBoost') {
+                aiBoostTimer = Math.max(aiBoostTimer, 5 * 60);
+            } else if (type === 'investorCheck') {
+                valuation *= 1.04;
+            }
+        }
+
+        function finishRun(outcome, reason = '') {
+            gameState = 'gameover';
+            if (outcome === 'unicorn') {
+                playSound('stage');
+            } else {
+                playSound('crash');
+            }
+
+            if (valuation > bestValuation) {
+                bestValuation = valuation;
+                localStorage.setItem('kodikUnicornBestValuation', String(Math.floor(bestValuation)));
+            }
+
+            const finalValuation = formatMoney(Math.floor(valuation));
+            document.getElementById('finalTitle').textContent = outcome === 'unicorn' ? 'UNICORN ACHIEVED' : 'RUN COLLAPSED';
+            document.getElementById('finalScore').textContent = finalValuation;
+            document.getElementById('finalStage').textContent = outcome === 'unicorn'
+                ? 'Статус: UNICORN. Код и продукт выдержали.'
+                : (reason || `Этап: ${stage}`);
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('ui').classList.remove('hidden');
+        }
+
+        function update() {
+            if (gameState !== 'playing') return;
+            if (isPaused) return;
+
+            runTicks += 1;
+            if (aiBoostTimer > 0) aiBoostTimer -= 1;
+
+            const targetSpeed = BASE_SPEED + Math.min(8.8, Math.pow(runTicks / 1200, 1.08));
+            speed += (targetSpeed - speed) * 0.02;
+
+            const newTier = Math.floor(runTicks / 3200);
+            if (newTier > speedTier) {
+                speedTier = newTier;
+                speed += 0.35;
+                spawnDust(getBoardX() + board.width * SCALE * 0.5, BOARD_Y - 4 * SCALE, 10, '#9adfff');
+            }
+
+            floorOffset = (floorOffset + speed) % (40 * SCALE);
+            skylineOffset = (skylineOffset + speed * 0.42) % (W + 220 * SCALE);
+            board.wheelTick += speed * 0.13;
+
+            hero.vy += GRAVITY * SCALE * 0.54;
+            hero.y += hero.vy;
+
+            const ground = BOARD_Y - board.height - hero.height * SCALE;
+            if (hero.y >= ground) {
+                hero.y = ground;
+                hero.vy = 0;
+                hero.jumping = false;
+            }
+
+            passiveDecayTimer += 1;
+            if (passiveDecayTimer >= 180) {
+                passiveDecayTimer = 0;
+                users = clamp(users - 1, 0, 100);
+                if (getStageConfig().threshold >= 200_000_000) {
+                    codeQuality = clamp(codeQuality - 1, 0, 100);
+                }
+            }
+
+            const stageFactor = getStageConfig().speedFactor;
+            let userFactor = 0.6 + users / 100;
+            let qualityFactor = 0.35 + codeQuality / 100;
+            if (users < 20) {
+                userFactor *= 0.85;
+            }
+            if (codeQuality < 20) {
+                qualityFactor *= 0.85;
+            }
+            let growth = 4200 * userFactor * qualityFactor * stageFactor;
+            if (users < 20 && codeQuality < 20) {
+                growth *= 0.9;
+            }
+            if (aiBoostTimer > 0) {
+                growth *= 1.2;
+            }
+            valuation += growth;
+
+            spawnTimer++;
+            const interval = minSpawn + Math.random() * 42 + Math.random() * 28;
+            if (spawnTimer >= interval) {
+                spawnObstacle();
+                spawnTimer = 0;
+                minSpawn = Math.max(52, minSpawn - 0.2);
+            }
+
+            pickupTimer++;
+            const pickupInterval = Math.max(70, 164 - speed * 5) + Math.random() * 28;
+            if (pickupTimer >= pickupInterval) {
+                spawnPickup();
+                pickupTimer = 0;
+            }
+
+            obstacles.forEach((obs) => {
+                obs.x -= speed;
+            });
+            obstacles = obstacles.filter((obs) => obs.x + obs.width > -120);
+
+            pickups.forEach((pickup) => {
+                pickup.x -= speed;
+                pickup.tick += 0.18;
+            });
+            pickups = pickups.filter((pickup) => pickup.x + pickup.size > -30);
+
+            const heroBox = {
+                x: getHeroX() + 7 * SCALE,
+                y: hero.y + 6 * SCALE,
+                width: hero.width * SCALE - 14 * SCALE,
+                height: hero.height * SCALE - 10 * SCALE
+            };
+
+            obstacles = obstacles.filter((obs) => {
+                let hit;
+                if (obs.type === 'techDebt' || obs.type === 'prodIncident') {
+                    hit = {
+                        x: obs.x + 4,
+                        y: obs.y + 2,
+                        width: obs.width - 8,
+                        height: obs.height - 4
+                    };
+                } else {
+                    hit = {
+                        x: obs.x + 4,
+                        y: obs.y,
+                        width: obs.width - 8,
+                        height: obs.height + 6
+                    };
+                }
+
+                const isHit = (
+                    heroBox.x < hit.x + hit.width &&
+                    heroBox.x + heroBox.width > hit.x &&
+                    heroBox.y < hit.y + hit.height &&
+                    heroBox.y + heroBox.height > hit.y
+                );
+                if (isHit) {
+                    applyObstacleHit(obs.type);
+                    return false;
+                }
+                return true;
+            });
+
+            pickups = pickups.filter((pickup) => {
+                const bob = Math.sin(pickup.tick) * 2 * SCALE;
+                const pickupBox = {
+                    x: pickup.x + 2 * SCALE,
+                    y: pickup.y + bob + 2 * SCALE,
+                    width: pickup.size - 4 * SCALE,
+                    height: pickup.size - 4 * SCALE
+                };
+                const hit =
+                    heroBox.x < pickupBox.x + pickupBox.width &&
+                    heroBox.x + heroBox.width > pickupBox.x &&
+                    heroBox.y < pickupBox.y + pickupBox.height &&
+                    heroBox.y + heroBox.height > pickupBox.y;
+
+                if (hit) {
+                    applyPickupEffect(pickup.type);
+                    spawnDust(pickup.x + pickup.size * 0.5, pickup.y + pickup.size * 0.5, 8, '#ffd54a');
+                    playSound('coin');
+                    return false;
+                }
+                return true;
+            });
+
+            particles.forEach((p) => {
+                p.x += p.vx - speed * 0.45;
+                p.y += p.vy;
+                p.vy += 0.08;
+                p.life -= 1;
+            });
+            particles = particles.filter((p) => p.life > 0);
+
+            if (Math.random() < 0.22) {
+                spawnDust(getBoardX() + 10, BOARD_Y - 5 - Math.random() * 12, 1, '#1d5d40');
+            }
+
+            if (users <= 0) {
+                finishRun('failed', 'Стартап закрылся: Users = 0');
+                return;
+            }
+            if (codeQuality <= 0) {
+                finishRun('failed', 'Стартап закрылся: Code Quality = 0');
+                return;
+            }
+
+            updateStage();
+            if (valuation >= 1_000_000_000) {
+                finishRun('unicorn');
+                return;
+            }
+            updateHUD();
+        }
+
+        function drawBackground() {
+            const stageBack = {
+                'PRE-SEED': ['#091118', '#132735'],
+                'SEED': ['#082018', '#0f3d29'],
+                'SERIES A': ['#0a1f31', '#12476a'],
+                'SERIES B': ['#2a144a', '#42307a'],
+                'UNICORN': ['#4d1b5e', '#f24894']
+            };
+            const palette = stageBack[stage] || stageBack['PRE-SEED'];
+
+            const g = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+            g.addColorStop(0, palette[0]);
+            g.addColorStop(1, palette[1]);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, W, GROUND_Y);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+            const starSpacing = 92;
+            const starCount = Math.ceil((W + 200) / starSpacing) + 2;
+            const starCycle = starCount * starSpacing;
+            for (let i = 0; i < starCount; i++) {
+                const rawX = i * starSpacing + skylineOffset * 0.4;
+                const x = ((rawX % starCycle) + starCycle) % starCycle - 100;
+                const y = 28 + (i % 7) * 20;
+                ctx.fillRect(x, y, 2 * SCALE, 2 * SCALE);
+            }
+
+            const buildingSpacing = 130;
+            const buildingCount = Math.ceil((W + 320) / buildingSpacing) + 3;
+            const buildingCycle = buildingCount * buildingSpacing;
+            for (let i = 0; i < buildingCount; i++) {
+                const rawX = i * buildingSpacing - skylineOffset;
+                const x = ((rawX % buildingCycle) + buildingCycle) % buildingCycle - 160;
+                const h = (40 + (i % 5) * 20) * SCALE;
+                ctx.fillStyle = 'rgba(5, 10, 16, 0.45)';
+                ctx.fillRect(x, GROUND_Y - 40 * SCALE - h, 88 * SCALE, h);
+                ctx.fillStyle = 'rgba(60, 90, 115, 0.65)';
+                for (let wx = 0; wx < 5; wx++) {
+                    for (let wy = 0; wy < 6; wy++) {
+                        if ((wx + wy + i) % 3 === 0) {
+                            ctx.fillRect(x + 10 * SCALE + wx * 14 * SCALE, GROUND_Y - 26 * SCALE - h + wy * 14 * SCALE, 4 * SCALE, 4 * SCALE);
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawFloor() {
+            ctx.fillStyle = '#1e3d2d';
+            ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+
+            ctx.fillStyle = '#163021';
+            for (let x = -floorOffset; x < W + 44 * SCALE; x += 40 * SCALE) {
+                ctx.fillRect(x, GROUND_Y, 18 * SCALE, H - GROUND_Y);
+            }
+
+            ctx.fillStyle = '#2de67a';
+            ctx.fillRect(0, GROUND_Y, W, 4 * SCALE);
+        }
+
+        function drawBoard() {
+            const x = getBoardX();
+            const y = BOARD_Y;
+            const w = board.width * SCALE;
+            const h = board.height;
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
+            ctx.fillRect(x + 4 * SCALE, y + 6, w, 6);
+
+            ctx.fillStyle = '#253342';
+            ctx.fillRect(x, y - h, w, h);
+            ctx.fillStyle = '#3c4e60';
+            ctx.fillRect(x + 5 * SCALE, y - h + 3, w - 10 * SCALE, 5);
+
+            const wheel = 10 * SCALE;
+            const tick = Math.floor(board.wheelTick % 4);
+            [x + 14 * SCALE, x + w - 24 * SCALE].forEach((wx) => {
+                ctx.fillStyle = '#111';
+                ctx.fillRect(wx, y - 1, wheel, wheel);
+                ctx.fillStyle = '#2de67a';
+                if (tick === 0) ctx.fillRect(wx + 4 * SCALE, y + 2, 2 * SCALE, 5);
+                if (tick === 1) ctx.fillRect(wx + 2 * SCALE, y + 4, 6 * SCALE, 2);
+                if (tick === 2) ctx.fillRect(wx + 4 * SCALE, y + 2, 2 * SCALE, 5);
+                if (tick === 3) ctx.fillRect(wx + 2 * SCALE, y + 4, 6 * SCALE, 2);
+            });
+        }
+
+        function drawHero() {
+            const x = getHeroX();
+            const y = hero.y;
+            const w = hero.width * SCALE;
+            const h = hero.height * SCALE;
+            const px = Math.max(1, Math.round(2 * SCALE));
+            const runFrame = Math.floor(board.wheelTick % 6);
+            const bobStep = Math.max(1, Math.round(0.7 * SCALE));
+            const rideBob = (!hero.jumping && gameState === 'playing' && (runFrame === 1 || runFrame === 4)) ? bobStep : 0;
+
+            ctx.save();
+            if (hero.jumping) {
+                ctx.translate(x + w / 2, y + h / 2);
+                ctx.rotate(hero.vy * 0.01);
+                ctx.translate(-(x + w / 2), -(y + h / 2));
+            }
+
+            const headSize = 18 * px;
+            const headX = x + 7 * px;
+            const headY = y + 1 * px + rideBob;
+
+            if (kodikImg.complete && kodikImg.naturalWidth > 0) {
+                ctx.drawImage(kodikImg, headX, headY, headSize, headSize);
+            } else {
+                ctx.fillStyle = '#28d96f';
+                ctx.fillRect(headX, headY, headSize, headSize);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(headX + 4 * px, headY + 9 * px, 5 * px, 3 * px);
+                ctx.fillRect(headX + 12 * px, headY + 9 * px, 5 * px, 3 * px);
+                ctx.fillRect(headX + 8 * px, headY + 14 * px, 6 * px, 2 * px);
+            }
+
+            const bodyX = x + 6 * px;
+            const bodyY = y + 14 * px + rideBob;
+
+            ctx.fillStyle = '#39ce5c';
+            ctx.fillRect(bodyX + 6 * px, bodyY, 6 * px, 2 * px);
+
+            ctx.fillStyle = '#4fc355';
+            ctx.fillRect(bodyX + 3 * px, bodyY + 2 * px, 12 * px, 10 * px);
+            ctx.fillRect(bodyX + 1 * px, bodyY + 5 * px, 2 * px, 5 * px);
+            ctx.fillRect(bodyX + 15 * px, bodyY + 5 * px, 2 * px, 5 * px);
+
+            ctx.fillStyle = '#002d1b';
+            ctx.fillRect(bodyX + 3 * px, bodyY + 2 * px, px, 10 * px);
+            ctx.fillRect(bodyX + 14 * px, bodyY + 2 * px, px, 10 * px);
+            ctx.fillRect(bodyX + 3 * px, bodyY + 11 * px, 12 * px, px);
+            ctx.fillRect(bodyX + 8 * px, bodyY + 3 * px, px, 8 * px);
+            ctx.fillRect(bodyX + 5 * px, bodyY + 5 * px, 2 * px, px);
+            ctx.fillRect(bodyX + 11 * px, bodyY + 5 * px, 2 * px, px);
+            ctx.fillRect(bodyX + 8 * px, bodyY + 6 * px, px, px);
+            ctx.fillRect(bodyX + 8 * px, bodyY + 8 * px, px, px);
+
+            ctx.fillStyle = '#4fc355';
+            ctx.fillRect(bodyX + 4 * px, bodyY + 12 * px, 10 * px, 2 * px);
+
+            // Static seated legs: hero rides platform, does not run.
+            ctx.fillStyle = '#4fc355';
+            ctx.fillRect(bodyX + 5 * px, bodyY + 14 * px, 3 * px, 5 * px);
+            ctx.fillRect(bodyX + 10 * px, bodyY + 14 * px, 3 * px, 5 * px);
+
+            ctx.fillStyle = '#2a9f4a';
+            ctx.fillRect(bodyX + 5 * px, bodyY + 18 * px, 3 * px, px);
+            ctx.fillRect(bodyX + 10 * px, bodyY + 18 * px, 3 * px, px);
+
+            ctx.fillStyle = '#4fc355';
+            const tailLift = (runFrame === 0 || runFrame === 3) ? 0 : -bobStep;
+            const tailY = bodyY + 12 * px + tailLift;
+            ctx.fillRect(bodyX - 2 * px, tailY, 2 * px, 2 * px);
+            ctx.fillRect(bodyX - 4 * px, tailY + px, 2 * px, 2 * px);
+            ctx.fillRect(bodyX - 6 * px, tailY + 2 * px, 2 * px, 2 * px);
+            ctx.fillRect(bodyX - 8 * px, tailY + 3 * px, 2 * px, 2 * px);
+            ctx.fillRect(bodyX - 7 * px, tailY + 4 * px, 3 * px, 2 * px);
+
+            ctx.fillStyle = '#002d1b';
+            ctx.fillRect(bodyX - 2 * px, tailY + px, px, px);
+            ctx.fillRect(bodyX - 5 * px, tailY + 2 * px, px, px);
+            ctx.fillRect(bodyX - 7 * px, tailY + 4 * px, px, px);
+
+            if (!hero.jumping && Math.floor(runTicks / 26) % 4 === 0) {
+                ctx.fillStyle = 'rgba(195, 255, 230, 0.75)';
+                ctx.fillRect(headX + 4 * px, headY + 7 * px, 2 * px, px);
+                ctx.fillRect(headX + 12 * px, headY + 7 * px, 2 * px, px);
+            }
+
+            ctx.restore();
+        }
+
+        function drawObstacles() {
+            obstacles.forEach((obs) => {
+                if (obs.type === 'techDebt') {
+                    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                    ctx.fillRect(obs.x + 4, GROUND_Y + 3, obs.width - 8, 5);
+
+                    ctx.fillStyle = '#7c3a3a';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.fillStyle = '#d56a6a';
+                    ctx.fillRect(obs.x + 6, obs.y + 6, obs.width - 12, obs.height - 12);
+                    ctx.fillStyle = '#322';
+                    ctx.fillRect(obs.x + 12, obs.y + 12, obs.width - 24, 10 * SCALE);
+                } else if (obs.type === 'prodIncident') {
+                    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+                    ctx.fillRect(obs.x + 4, GROUND_Y + 3, obs.width - 8, 5);
+                    ctx.fillStyle = '#913333';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.fillStyle = '#ff4f4f';
+                    ctx.fillRect(obs.x + 5, obs.y + 5, obs.width - 10, obs.height - 10);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(obs.x + 10, obs.y + 8, obs.width - 20, 4 * SCALE);
+                    ctx.fillRect(obs.x + 10, obs.y + 18 * SCALE, obs.width - 20, 4 * SCALE);
+                } else {
+                    ctx.fillStyle = '#2f3d4d';
+                    ctx.fillRect(obs.x + 8 * SCALE, obs.y + obs.height, 6 * SCALE, obs.legHeight - obs.height);
+                    ctx.fillRect(obs.x + obs.width - 14 * SCALE, obs.y + obs.height, 6 * SCALE, obs.legHeight - obs.height);
+
+                    ctx.fillStyle = obs.type === 'investorPivot' ? '#9a5fbf' : '#4b89b8';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.fillStyle = obs.type === 'investorPivot' ? '#f0d2ff' : '#c9f2ff';
+                    ctx.fillRect(obs.x + 8 * SCALE, obs.y + 5, obs.width - 16 * SCALE, 6);
+                }
+            });
+        }
+
+        function drawPickups() {
+            pickups.forEach((pickup) => {
+                const bob = Math.sin(pickup.tick) * 2 * SCALE;
+                const x = pickup.x;
+                const y = pickup.y + bob;
+                const s = pickup.size;
+                const palette = {
+                    cleanPR: ['#0d5f3c', '#2de67a', '#b9ffd6'],
+                    userLove: ['#31539b', '#5f9bff', '#dce9ff'],
+                    pmfSignal: ['#8f6b05', '#ffd54a', '#fff2b8'],
+                    aiBoost: ['#4a2b9f', '#9b6bff', '#ecdfff'],
+                    investorCheck: ['#6b4b07', '#ffb347', '#ffe0af']
+                }[pickup.type] || ['#9f6c00', '#ffd54a', '#fff2a5'];
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+                ctx.fillRect(x + 2 * SCALE, y + s + 2, s - 4 * SCALE, 3);
+
+                ctx.fillStyle = palette[0];
+                ctx.fillRect(x, y, s, s);
+                ctx.fillStyle = palette[1];
+                ctx.fillRect(x + 2 * SCALE, y + 2 * SCALE, s - 4 * SCALE, s - 4 * SCALE);
+                ctx.fillStyle = palette[2];
+                ctx.fillRect(x + 4 * SCALE, y + 4 * SCALE, s - 8 * SCALE, 3 * SCALE);
+                ctx.fillStyle = palette[0];
+                ctx.fillRect(x + Math.floor(s / 2) - SCALE, y + 4 * SCALE, 2 * SCALE, s - 8 * SCALE);
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach((p) => {
+                ctx.globalAlpha = Math.max(0, p.life / 30);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, p.size, p.size);
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function drawUnicornPulse() {
+            if (stage !== 'UNICORN' || gameState !== 'playing') return;
+            if (Math.floor(runTicks / 15) % 2 === 0) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.17)';
+                ctx.fillRect(0, 0, W, H);
+            }
+        }
+
+        function drawPauseOverlay() {
+            if (!isPaused || gameState !== 'playing') return;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = '#dcffe9';
+            ctx.font = `${Math.max(14, Math.floor(18 * SCALE))}px 'Press Start 2P'`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('PAUSED', W / 2, H / 2 - 10);
+            ctx.font = `${Math.max(9, Math.floor(10 * SCALE))}px 'Press Start 2P'`;
+            ctx.fillStyle = '#94d2b2';
+            ctx.fillText('tap pause or press P', W / 2, H / 2 + 18);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, W, H);
+            drawBackground();
+            drawFloor();
+            drawObstacles();
+            drawPickups();
+            drawBoard();
+            drawHero();
+            drawParticles();
+            drawUnicornPulse();
+            drawPauseOverlay();
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        resetRun();
+        updateHUD();
+        loop();
+    </script>
+</body>
+</html>
